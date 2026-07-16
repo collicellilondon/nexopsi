@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
   const isDashboard = request.nextUrl.pathname.startsWith("/dashboard");
-  const hasSession = request.cookies.get("mindflow_session")?.value === "demo";
+  const hasSession = request.cookies.get("nexopsi_session")?.value === "demo";
 
   if (isDashboard && !hasSession) {
     const loginUrl = new URL("/login", request.url);

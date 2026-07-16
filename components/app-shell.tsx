@@ -75,7 +75,7 @@ export function AppShell({ children, onNotify, onCreatePatient, onCreateSession 
   }
 
   function signOut() {
-    document.cookie = "mindflow_session=; path=/; max-age=0; samesite=lax";
+    document.cookie = "nexopsi_session=; path=/; max-age=0; samesite=lax";
     window.location.href = "/login";
   }
 
@@ -90,9 +90,9 @@ export function AppShell({ children, onNotify, onCreatePatient, onCreateSession 
       >
         <div className="flex items-center justify-between px-2">
           <div className={cn("flex items-center gap-3", collapsed && "lg:justify-center")}>
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-sm font-black text-white">CP</div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-sm font-black text-white">NX</div>
             <div className={cn("min-w-0", collapsed && "lg:hidden")}>
-              <p className="text-sm font-black text-ink">Clínica Psi</p>
+              <p className="text-sm font-black text-ink">Nexopsi</p>
               <p className="text-xs text-ink-muted">Gestão clínica</p>
             </div>
           </div>

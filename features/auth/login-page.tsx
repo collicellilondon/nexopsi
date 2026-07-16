@@ -33,8 +33,8 @@ type AuthState =
   | "success"
   | "recovery-sent";
 
-const demoEmail = "demo@mindflow.com";
-const demoPassword = "mindflow123";
+const demoEmail = "demo@nexopsi.com";
+const demoPassword = "nexopsi123";
 
 export function LoginPage() {
   const router = useRouter();
@@ -62,7 +62,7 @@ export function LoginPage() {
 
     if (isDemo) {
       await new Promise((resolve) => setTimeout(resolve, 650));
-      document.cookie = `mindflow_session=demo; path=/; max-age=${values.remember ? 60 * 60 * 24 * 30 : 60 * 60}; samesite=lax`;
+      document.cookie = `nexopsi_session=demo; path=/; max-age=${values.remember ? 60 * 60 * 24 * 30 : 60 * 60}; samesite=lax`;
       setAuthState("success");
       setTimeout(() => router.push(returnTo), 650);
       return;
@@ -70,7 +70,7 @@ export function LoginPage() {
 
     const result = await signInWithEmail(values.email, values.password);
     if (!result.error) {
-      document.cookie = `mindflow_session=demo; path=/; max-age=${values.remember ? 60 * 60 * 24 * 30 : 60 * 60}; samesite=lax`;
+      document.cookie = `nexopsi_session=demo; path=/; max-age=${values.remember ? 60 * 60 * 24 * 30 : 60 * 60}; samesite=lax`;
       setAuthState("success");
       setTimeout(() => router.push(returnTo), 650);
       return;
@@ -113,7 +113,7 @@ export function LoginPage() {
           <div className="flex flex-1 items-center justify-center">
             <div className="w-full max-w-[430px] animate-[authEnter_520ms_ease-out]">
               <div className="mb-8">
-                <p className="text-sm font-bold text-secondary">MindFlow</p>
+                <p className="text-sm font-bold text-secondary">Nexopsi</p>
                 <h1 className="mt-3 text-3xl font-black tracking-tight text-ink">Bem-vindo de volta</h1>
                 <p className="mt-2 text-sm leading-6 text-[#667085]">Entre para continuar cuidando da sua clínica.</p>
               </div>
@@ -278,7 +278,7 @@ function BrandMark({ compact = false }: { compact?: boolean }) {
         <Sparkles className="h-5 w-5" />
       </div>
       <div>
-        <p className={cn("font-black", compact ? "text-lg text-ink" : "text-xl text-white")}>MindFlow</p>
+        <p className={cn("font-black", compact ? "text-lg text-ink" : "text-xl text-white")}>Nexopsi</p>
       </div>
     </div>
   );

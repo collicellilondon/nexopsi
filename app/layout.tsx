@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Clínica Psi | Gestão para psicólogos",
+  title: "Nexopsi | Gestão para psicólogos",
   description: "Plataforma SaaS moderna para gestão clínica, agenda, prontuário e financeiro."
 };
 
