@@ -23,15 +23,48 @@ const statusVariant: Record<AppointmentStatus, "default" | "warning" | "success"
   cancelada: "muted"
 };
 
+type CalendarColorMode = "psychologist" | "status";
+
+const statusColors: Record<AppointmentStatus, { label: string; color: string }> = {
+  confirmada: { label: "Confirmada", color: "#245B68" },
+  pendente: { label: "Pendente", color: "#B7791F" },
+  realizada: { label: "Realizada", color: "#2F7D63" },
+  faltou: { label: "Faltou", color: "#B42318" },
+  cancelada: { label: "Cancelada", color: "#6B7280" }
+};
+
+const psychologistColors = {
+  "Dra. Ana Ribeiro": "#245B68",
+  "Dr. Paulo Mendes": "#5F9E8C",
+  "Dra. Camila Torres": "#7C3AED",
+  "Dra. Luiza Rocha": "#C2410C"
+};
+
+const editablePalette = ["#245B68", "#5F9E8C", "#7C3AED", "#C2410C", "#BE185D", "#0F766E", "#2563EB"];
+
 type ClinicalCalendarProps = {
   createdCount: number;
   onNotify: (message: string) => void;
 };
 
+function getPsychologist(appointment: Appointment) {
+  if (appointment.patientName.includes("Helena") || appointment.patientName.includes("Supervisão")) return "Dr. Paulo Mendes";
+  if (appointment.patientName.includes("Caio") || appointment.patientName.includes("Teste")) return "Dra. Camila Torres";
+  if (appointment.patientName.includes("avulsa") || appointment.patientName.includes("Bloqueado")) return "Dra. Luiza Rocha";
+  return "Dra. Ana Ribeiro";
+}
+
+function getAppointmentColor(appointment: Appointment, colorMode: CalendarColorMode, professionalColors: Record<string, string>) {
+  if (colorMode === "status") return statusColors[appointment.status].color;
+  return professionalColors[getPsychologist(appointment)] ?? "#245B68";
+}
+
 export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarProps) {
   const [items, setItems] = useState<Appointment[]>(initialAppointments);
   const [selectedId, setSelectedId] = useState(initialAppointments[0].id);
   const [modalId, setModalId] = useState<string | null>(null);
+  const [colorMode, setColorMode] = useState<CalendarColorMode>("psychologist");
+  const [professionalColors, setProfessionalColors] = useState<Record<string, string>>(psychologistColors);
   const [waitlist, setWaitlist] = useState(["Helena Costa • manhã", "Rafael Nogueira • online", "Bianca Lima • sexta"]);
   const selected = items.find((item) => item.id === selectedId) ?? items[0];
   const modalAppointment = items.find((item) => item.id === modalId);
@@ -59,14 +92,33 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
     () =>
       items.map((appointment) => ({
         id: appointment.id,
-        title: `${appointment.patientName} • ${appointment.mode}`,
+        title: `${appointment.patientName} • ${colorMode === "psychologist" ? getPsychologist(appointment) : statusColors[appointment.status].label}`,
         start: appointment.start,
         end: appointment.end,
-        backgroundColor: appointment.status === "cancelada" ? "#6B7280" : appointment.mode === "online" ? "#5F9E8C" : "#245B68",
-        borderColor: appointment.status === "cancelada" ? "#6B7280" : appointment.mode === "online" ? "#5F9E8C" : "#245B68"
+        backgroundColor: getAppointmentColor(appointment, colorMode, professionalColors),
+        borderColor: getAppointmentColor(appointment, colorMode, professionalColors)
       })),
-    [items]
+    [items, colorMode, professionalColors]
   );
+
+  const activeLegend =
+    colorMode === "psychologist"
+      ? Object.entries(professionalColors).map(([label, color]) => ({ label, color }))
+      : Object.entries(statusColors).map(([, value]) => value);
+
+  function changeColorMode(mode: CalendarColorMode) {
+    setColorMode(mode);
+    onNotify(mode === "psychologist" ? "Agenda colorida por psicólogo." : "Agenda colorida por status do agendamento.");
+  }
+
+  function cycleProfessionalColor(label: string) {
+    setProfessionalColors((current) => {
+      const currentColor = current[label] ?? editablePalette[0];
+      const nextColor = editablePalette[(editablePalette.indexOf(currentColor) + 1) % editablePalette.length];
+      onNotify(`${label} definiu a cor ${nextColor} para a agenda.`);
+      return { ...current, [label]: nextColor };
+    });
+  }
 
   function handleEventClick(arg: EventClickArg) {
     setSelectedId(arg.event.id);
@@ -124,6 +176,22 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
                 <CardDescription>Clique em um horário com cliente para abrir o popup moderno com ações completas.</CardDescription>
               </div>
               <div className="flex flex-wrap gap-2">
+                <div className="flex rounded-md border border-border bg-white p-1">
+                  <button
+                    type="button"
+                    onClick={() => changeColorMode("psychologist")}
+                    className={`rounded-sm px-3 py-1.5 text-sm font-bold transition ${colorMode === "psychologist" ? "bg-primary text-white" : "text-ink-muted hover:bg-primary-soft hover:text-primary"}`}
+                  >
+                    Cores por psicólogo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => changeColorMode("status")}
+                    className={`rounded-sm px-3 py-1.5 text-sm font-bold transition ${colorMode === "status" ? "bg-primary text-white" : "text-ink-muted hover:bg-primary-soft hover:text-primary"}`}
+                  >
+                    Cores por status
+                  </button>
+                </div>
                 <Button type="button" variant="outline" size="sm" onClick={() => handleSelect({ startStr: "2026-07-21T08:00:00", endStr: "2026-07-21T09:00:00" } as DateSelectArg)}>Bloquear horário</Button>
                 <Button type="button" size="sm" onClick={createManualSession}>Nova sessão</Button>
               </div>
@@ -153,6 +221,33 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
         </Card>
 
         <aside className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>{colorMode === "psychologist" ? "Cores por psicólogo" : "Cores por status"}</CardTitle>
+              <CardDescription>
+                {colorMode === "psychologist" ? "Cada profissional define uma cor para seus atendimentos." : "A cor mostra a situação atual do agendamento."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {activeLegend.map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => {
+                    if (colorMode === "psychologist") cycleProfessionalColor(item.label);
+                  }}
+                  className="flex w-full items-center justify-between rounded-md border border-border bg-background p-2 text-left text-sm font-semibold text-ink transition hover:bg-primary-soft"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="h-3.5 w-3.5 rounded-sm" style={{ backgroundColor: item.color }} />
+                    {item.label}
+                  </span>
+                  {colorMode === "psychologist" ? <span className="text-xs text-ink-muted">editar cor</span> : <span className="text-xs text-ink-muted">fixo</span>}
+                </button>
+              ))}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Detalhes da sessão</CardTitle>
