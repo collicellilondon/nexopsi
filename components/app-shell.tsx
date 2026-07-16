@@ -74,6 +74,11 @@ export function AppShell({ children, onNotify, onCreatePatient, onCreateSession 
     onNotify(`Busca global executada por "${query}".`);
   }
 
+  function signOut() {
+    document.cookie = "mindflow_session=; path=/; max-age=0; samesite=lax";
+    window.location.href = "/login";
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <aside
@@ -129,7 +134,7 @@ export function AppShell({ children, onNotify, onCreatePatient, onCreateSession 
               <p className="truncate text-xs text-ink-muted">Psicóloga clínica</p>
             </div>
           </button>
-          <button type="button" onClick={() => onNotify("Saída simulada. Em produção, aqui entra Supabase Auth signOut().")} className={cn("flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-semibold text-destructive hover:bg-red-50", collapsed && "lg:justify-center lg:px-0")}>
+          <button type="button" onClick={signOut} className={cn("flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-semibold text-destructive hover:bg-red-50", collapsed && "lg:justify-center lg:px-0")}>
             <LogOut className="h-5 w-5" />
             <span className={cn(collapsed && "lg:hidden")}>Sair</span>
           </button>

@@ -1,5 +1,5 @@
-import { InteractiveHome } from "@/features/home/interactive-home";
+import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  return <InteractiveHome />;
+  redirect("/login");
 }
