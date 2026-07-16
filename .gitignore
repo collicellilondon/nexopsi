@@ -9,3 +9,5 @@ tsconfig.tsbuildinfo
 work/npm-cache
 work/*.log
 work/*.err
+
+.vercel
