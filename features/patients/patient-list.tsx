@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowUpDown, CalendarClock, Filter, MoreHorizontal, Search, WalletCards } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,39 +26,23 @@ const statusVariant: Record<PatientStatus, "success" | "muted" | "secondary" | "
 };
 
 type PatientListProps = {
-  createdCount: number;
+  patients: Patient[];
   onNotify: (message: string) => void;
 };
 
-export function PatientList({ createdCount, onNotify }: PatientListProps) {
+export function PatientList({ patients, onNotify }: PatientListProps) {
   const [items, setItems] = useState<Patient[]>(initialPatients);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<PatientStatus | "todos">("todos");
   const [showOnlyDebt, setShowOnlyDebt] = useState(false);
   const [sortAsc, setSortAsc] = useState(true);
 
-  useEffect(() => {
-    if (createdCount === 0) return;
-    const patient: Patient = {
-      id: `pac-teste-${createdCount}`,
-      name: `Paciente Teste ${createdCount}`,
-      age: 30 + createdCount,
-      status: "triagem",
-      tags: ["Novo", "Teste"],
-      nextSession: "A agendar",
-      lastSession: "Sem histórico",
-      pendingBalance: 0,
-      phone: "(11) 90000-0000",
-      email: `paciente.teste.${createdCount}@email.com`,
-      therapist: "Dra. Ana Ribeiro"
-    };
-    setItems((current) => [patient, ...current]);
-  }, [createdCount]);
+  const allPatients = useMemo(() => [...patients, ...items], [patients, items]);
 
   const filteredPatients = useMemo(() => {
-    return items
+    return allPatients
       .filter((patient) => {
-        const matchesQuery = [patient.name, patient.email, patient.phone, patient.therapist, ...patient.tags]
+        const matchesQuery = [patient.name, patient.email, patient.phone, patient.therapist, patient.address, patient.cpf, ...patient.tags]
           .join(" ")
           .toLowerCase()
           .includes(query.toLowerCase());
@@ -67,7 +51,7 @@ export function PatientList({ createdCount, onNotify }: PatientListProps) {
         return matchesQuery && matchesStatus && matchesDebt;
       })
       .sort((a, b) => (sortAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)));
-  }, [items, query, status, showOnlyDebt, sortAsc]);
+  }, [allPatients, query, status, showOnlyDebt, sortAsc]);
 
   function cycleStatus(patientId: string) {
     const order: PatientStatus[] = ["triagem", "ativo", "pausado", "alta"];
@@ -104,7 +88,7 @@ export function PatientList({ createdCount, onNotify }: PatientListProps) {
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
-            <Input value={query} onChange={(event) => setQuery(event.target.value)} className="pl-9" placeholder="Buscar por nome, tag, telefone ou profissional" />
+            <Input value={query} onChange={(event) => setQuery(event.target.value)} className="pl-9" placeholder="Buscar por nome, CPF, endereço, telefone ou profissional" />
           </div>
           <div className="flex flex-wrap gap-2">
             {(["todos", "ativo", "triagem", "pausado"] as const).map((item) => (
@@ -123,55 +107,48 @@ export function PatientList({ createdCount, onNotify }: PatientListProps) {
           <div className="mt-5">
             <EmptyState title="Nenhum paciente encontrado" description="Revise a busca ou cadastre um novo paciente para iniciar a jornada clínica." />
             <div className="mt-3 flex justify-center">
-              <Button type="button" variant="outline" onClick={clearFilters}>
-                Limpar filtros
-              </Button>
+              <Button type="button" variant="outline" onClick={clearFilters}>Limpar filtros</Button>
             </div>
           </div>
         ) : (
           <div className="mt-5 overflow-hidden rounded-lg border border-border">
-            <div className="hidden grid-cols-[1.4fr_0.8fr_0.9fr_0.9fr_0.7fr_130px] gap-4 bg-background px-4 py-3 text-xs font-black uppercase tracking-wide text-ink-muted lg:grid">
+            <div className="hidden grid-cols-[1.4fr_0.9fr_0.9fr_0.8fr_0.7fr_130px] gap-4 bg-background px-4 py-3 text-xs font-black uppercase tracking-wide text-ink-muted lg:grid">
               <button type="button" className="flex items-center gap-2 text-left" onClick={() => setSortAsc((value) => !value)}>
                 Paciente <ArrowUpDown className="h-3.5 w-3.5" />
               </button>
-              <span>Status e tags</span>
+              <span>Contato e endereço</span>
               <span>Próxima sessão</span>
-              <span>Última sessão</span>
+              <span>Status</span>
               <span>Saldo</span>
               <span>Ações</span>
             </div>
             <div className="divide-y divide-border bg-white">
               {filteredPatients.map((patient) => (
-                <div key={patient.id} className="grid gap-4 px-4 py-4 lg:grid-cols-[1.4fr_0.8fr_0.9fr_0.9fr_0.7fr_130px] lg:items-center">
-                  <button type="button" onClick={() => onNotify(`Timeline de ${patient.name}: cadastro, sessão e financeiro carregados.`)} className="text-left">
+                <div key={patient.id} className="grid gap-4 px-4 py-4 lg:grid-cols-[1.4fr_0.9fr_0.9fr_0.8fr_0.7fr_130px] lg:items-center">
+                  <button type="button" onClick={() => onNotify(`Ficha de ${patient.name}: ${patient.mainComplaint ?? "sem queixa principal cadastrada"}.`)} className="text-left">
                     <p className="font-black text-ink">{patient.name}</p>
-                    <p className="mt-1 text-sm text-ink-muted">
-                      {patient.age} anos • {patient.phone}
-                    </p>
+                    <p className="mt-1 text-sm text-ink-muted">{patient.age} anos • CPF {patient.cpf ?? "não informado"}</p>
                     <p className="text-sm text-ink-muted">{patient.email}</p>
                   </button>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant={statusVariant[patient.status]}>{statusLabel[patient.status]}</Badge>
-                    {patient.tags.map((tag) => (
-                      <Badge key={tag} variant="default">
-                        {tag}
-                      </Badge>
-                    ))}
+                  <div className="text-sm text-ink-muted">
+                    <p className="font-semibold text-ink">{patient.phone}</p>
+                    <p>{patient.address ?? "Endereço não informado"}</p>
                   </div>
                   <div className="flex items-center gap-2 text-sm font-semibold text-ink">
                     <CalendarClock className="h-4 w-4 text-primary" />
                     {patient.nextSession}
                   </div>
-                  <p className="text-sm text-ink-muted">{patient.lastSession}</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant={statusVariant[patient.status]}>{statusLabel[patient.status]}</Badge>
+                    {patient.tags.slice(0, 2).map((tag) => <Badge key={tag}>{tag}</Badge>)}
+                  </div>
                   <button type="button" onClick={() => payBalance(patient.id)} className="flex items-center gap-2 text-left text-sm font-bold text-ink hover:text-primary">
                     <WalletCards className="h-4 w-4 text-secondary" />
                     {brl.format(patient.pendingBalance)}
                   </button>
                   <div className="flex gap-2">
-                    <Button type="button" variant="outline" size="sm" onClick={() => cycleStatus(patient.id)}>
-                      Status
-                    </Button>
-                    <Button type="button" variant="ghost" size="icon" aria-label={`Ações de ${patient.name}`} onClick={() => onNotify(`Ações rápidas abertas para ${patient.name}.`)}>
+                    <Button type="button" variant="outline" size="sm" onClick={() => cycleStatus(patient.id)}>Status</Button>
+                    <Button type="button" variant="ghost" size="icon" aria-label={`Ações de ${patient.name}`} onClick={() => onNotify(`Ficha completa aberta para ${patient.name}.`)}>
                       <MoreHorizontal className="h-5 w-5" />
                     </Button>
                   </div>

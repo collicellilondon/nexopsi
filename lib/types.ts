@@ -14,6 +14,15 @@ export type Patient = {
   phone: string;
   email: string;
   therapist: string;
+  cpf?: string;
+  birthDate?: string;
+  address?: string;
+  emergencyContact?: string;
+  guardian?: string;
+  occupation?: string;
+  referralSource?: string;
+  mainComplaint?: string;
+  clinicalNotes?: string;
 };
 
 export type Appointment = {

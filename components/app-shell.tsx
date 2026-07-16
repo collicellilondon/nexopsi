@@ -50,7 +50,16 @@ export function AppShell({ children, onNotify, onCreatePatient, onCreateSession 
 
   function goTo(label: string) {
     setActive(label);
-    const target = label === "Agenda" ? "agenda" : label === "Pacientes" ? "pacientes" : "";
+    const target =
+      label === "Agenda"
+        ? "agenda"
+        : label === "Pacientes"
+          ? "pacientes"
+          : label === "Relatórios"
+            ? "relatorios"
+            : label === "Configurações"
+              ? "configuracoes"
+              : "";
     if (target) {
       document.getElementById(target)?.scrollIntoView({ behavior: "smooth" });
       onNotify(`Abrindo ${label.toLowerCase()} para teste.`);
