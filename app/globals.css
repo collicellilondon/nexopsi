@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: #f7f8fa;
+  color: #1f2937;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.fc {
+  --fc-border-color: #e5e7eb;
+  --fc-today-bg-color: #eaf4f1;
+  --fc-event-bg-color: #245b68;
+  --fc-event-border-color: #245b68;
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: #ffffff;
+  font-family: inherit;
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.fc .fc-button {
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #245b68;
+  box-shadow: none;
+  text-transform: none;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active,
+.fc .fc-button-primary:hover {
+  border-color: #245b68;
+  background: #245b68;
+  color: #ffffff;
+}
+
+.fc .fc-scrollgrid,
+.fc .fc-theme-standard td,
+.fc .fc-theme-standard th {
+  border-color: #e5e7eb;
+}
+
+.fc .fc-daygrid-day-number,
+.fc .fc-col-header-cell-cushion {
+  color: #1f2937;
+  text-decoration: none;
+}
