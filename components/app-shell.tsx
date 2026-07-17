@@ -59,13 +59,15 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
         ? "agenda"
         : label === "Pacientes"
           ? "pacientes"
-          : label === "Financeiro"
-            ? "financeiro"
-            : label === "Relatorios"
-              ? "relatorios"
-              : label === "Configuracoes"
-                ? "configuracoes"
-                : "";
+          : label === "Sessoes"
+            ? "sessoes"
+            : label === "Financeiro"
+              ? "financeiro"
+              : label === "Relatorios"
+                ? "relatorios"
+                : label === "Configuracoes"
+                  ? "configuracoes"
+                  : "";
     if (target) {
       document.getElementById(target)?.scrollIntoView({ behavior: "smooth" });
       onNotify(`Abrindo ${label.toLowerCase()} para teste.`);
