@@ -21,17 +21,18 @@ type DashboardProps = {
   professionalName: string;
   onCreatePatient: () => void;
   onCreateSession: () => void;
+  onOpenDocuments: () => void;
   onNotify: (message: string) => void;
 };
 
-export function Dashboard({ professionalName, onCreatePatient, onCreateSession, onNotify }: DashboardProps) {
+export function Dashboard({ professionalName, onCreatePatient, onCreateSession, onOpenDocuments, onNotify }: DashboardProps) {
   const [pendingItems, setPendingItems] = useState(clinicalPendencies);
 
   const quickActions = [
     { label: "Criar paciente", icon: UserPlus, action: onCreatePatient },
     { label: "Agendar sessão", icon: CalendarPlus, action: onCreateSession },
     { label: "Registrar pagamento", icon: Receipt, action: () => onNotify("Pagamento de teste registrado como pago.") },
-    { label: "Gerar documento", icon: FilePlus2, action: () => onNotify("Documento de teste gerado com variáveis automáticas.") }
+    { label: "Gerar documento", icon: FilePlus2, action: onOpenDocuments }
   ];
 
   function resolvePending(item: string) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Settings, Stethoscope, Users, WalletCards } from "lucide-react";
+import { FileText, Plus, Settings, Stethoscope, Users, WalletCards } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { SectionHeading } from "@/components/section-heading";
 import { Dashboard } from "@/features/dashboard/dashboard";
@@ -12,6 +12,7 @@ import { ReportsPanel } from "@/features/reports/reports-panel";
 import { ThemeSettings } from "@/features/settings/theme-settings";
 import { FinancePanel } from "@/features/finance/finance-panel";
 import { SessionManagement } from "@/features/sessions/session-management";
+import { DocumentCenter } from "@/features/documents/document-center";
 import { ProfessionalProfile, type ProfessionalProfileData } from "@/features/settings/professional-profile";
 import type { Patient } from "@/lib/types";
 
@@ -52,6 +53,11 @@ export function InteractiveHome() {
     document.getElementById("agenda")?.scrollIntoView({ behavior: "smooth" });
   }
 
+  function openDocuments() {
+    notify("Central de Documentos aberta para gerar um novo arquivo.");
+    document.getElementById("documentos")?.scrollIntoView({ behavior: "smooth" });
+  }
+
   return (
     <AppShell
       professionalName={professionalProfile.name}
@@ -66,7 +72,7 @@ export function InteractiveHome() {
           {message}
         </div>
 
-        <Dashboard professionalName={professionalProfile.name} onCreatePatient={createPatient} onCreateSession={createSession} onNotify={notify} />
+        <Dashboard professionalName={professionalProfile.name} onCreatePatient={createPatient} onCreateSession={createSession} onOpenDocuments={openDocuments} onNotify={notify} />
 
         <section id="pacientes">
           <SectionHeading
@@ -110,6 +116,17 @@ export function InteractiveHome() {
             onAction={() => notify("Use o botao Nova fatura dentro do financeiro.")}
           />
           <FinancePanel onNotify={notify} />
+        </section>
+
+        <section id="documentos">
+          <SectionHeading
+            title="Documentos"
+            description="Modelos clinicos, prontuarios, contratos, termos, atestados, assinaturas, envio e impressao em PDF."
+            action="Novo documento"
+            icon={<FileText className="h-4 w-4" />}
+            onAction={openDocuments}
+          />
+          <DocumentCenter professionalName={professionalProfile.name} professionalRegister={professionalProfile.register} onNotify={notify} />
         </section>
 
         <section id="relatorios">

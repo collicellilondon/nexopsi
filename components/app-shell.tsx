@@ -63,11 +63,13 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
             ? "sessoes"
             : label === "Financeiro"
               ? "financeiro"
-              : label === "Relatorios"
-                ? "relatorios"
-                : label === "Configuracoes"
-                  ? "configuracoes"
-                  : "";
+              : label === "Documentos"
+                ? "documentos"
+                : label === "Relatorios"
+                  ? "relatorios"
+                  : label === "Configuracoes"
+                    ? "configuracoes"
+                    : "";
     if (target) {
       document.getElementById(target)?.scrollIntoView({ behavior: "smooth" });
       onNotify(`Abrindo ${label.toLowerCase()} para teste.`);
@@ -86,7 +88,13 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
       onNotify("Digite algo para executar a busca global.");
       return;
     }
-    const target = value.includes("agenda") || value.includes("sess") ? "agenda" : "pacientes";
+    const target = value.includes("document") || value.includes("contrato") || value.includes("prontuario")
+      ? "documentos"
+      : value.includes("finance") || value.includes("pagamento") || value.includes("fatura")
+        ? "financeiro"
+        : value.includes("agenda") || value.includes("sess")
+          ? "agenda"
+          : "pacientes";
     document.getElementById(target)?.scrollIntoView({ behavior: "smooth" });
     onNotify(`Busca global executada por "${query}".`);
   }
