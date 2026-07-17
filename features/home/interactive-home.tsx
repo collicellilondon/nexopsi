@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { FileText, Plus, Settings, Stethoscope, Users, WalletCards } from "lucide-react";
-import { AppShell } from "@/components/app-shell";
+import { AppShell, type AppView } from "@/components/app-shell";
 import { SectionHeading } from "@/components/section-heading";
 import { Dashboard } from "@/features/dashboard/dashboard";
 import { PatientList } from "@/features/patients/patient-list";
@@ -20,6 +20,7 @@ export function InteractiveHome() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [patientModalOpen, setPatientModalOpen] = useState(false);
   const [sessionSeed, setSessionSeed] = useState(0);
+  const [activeView, setActiveView] = useState<AppView>("inicio");
   const [professionalProfile, setProfessionalProfile] = useState<ProfessionalProfileData>({
     name: "Tatiane Bonfin",
     register: "CRP 06/123456",
@@ -36,6 +37,7 @@ export function InteractiveHome() {
   }
 
   function createPatient() {
+    setActiveView("pacientes");
     setPatientModalOpen(true);
     notify("Cadastro completo de paciente aberto.");
   }
@@ -44,37 +46,28 @@ export function InteractiveHome() {
     setPatients((current) => [patient, ...current]);
     setPatientModalOpen(false);
     notify(`Paciente ${patient.name} cadastrado com ficha completa.`);
-    document.getElementById("pacientes")?.scrollIntoView({ behavior: "smooth" });
+    setActiveView("pacientes");
   }
 
   function createSession() {
+    setActiveView("agenda");
     setSessionSeed((value) => value + 1);
     notify("Sessao de teste adicionada na agenda.");
-    document.getElementById("agenda")?.scrollIntoView({ behavior: "smooth" });
   }
 
   function openDocuments() {
+    setActiveView("documentos");
     notify("Central de Documentos aberta para gerar um novo arquivo.");
-    document.getElementById("documentos")?.scrollIntoView({ behavior: "smooth" });
   }
 
-  return (
-    <AppShell
-      professionalName={professionalProfile.name}
-      professionalSpecialty={professionalProfile.specialty}
-      professionalPhotoUrl={professionalProfile.photoUrl}
-      onNotify={notify}
-      onCreatePatient={createPatient}
-      onCreateSession={createSession}
-    >
-      <div className="mx-auto max-w-[1500px] space-y-10">
-        <div className="rounded-md border border-secondary/25 bg-secondary-soft px-4 py-3 text-sm font-semibold text-secondary">
-          {message}
-        </div>
+  function renderActiveView() {
+    if (activeView === "inicio") {
+      return <Dashboard professionalName={professionalProfile.name} onCreatePatient={createPatient} onCreateSession={createSession} onOpenDocuments={openDocuments} onNotify={notify} />;
+    }
 
-        <Dashboard professionalName={professionalProfile.name} onCreatePatient={createPatient} onCreateSession={createSession} onOpenDocuments={openDocuments} onNotify={notify} />
-
-        <section id="pacientes">
+    if (activeView === "pacientes") {
+      return (
+        <>
           <SectionHeading
             title="Pacientes"
             description="Cadastro completo, busca instantanea, filtros, ficha clinica e saldos em uma visao operacional."
@@ -83,9 +76,13 @@ export function InteractiveHome() {
             onAction={createPatient}
           />
           <PatientList patients={patients} onNotify={notify} />
-        </section>
+        </>
+      );
+    }
 
-        <section id="agenda">
+    if (activeView === "agenda") {
+      return (
+        <>
           <SectionHeading
             title="Agenda"
             description="Visualizacoes por dia, semana, mes e lista, com cores por status do agendamento."
@@ -94,9 +91,13 @@ export function InteractiveHome() {
             onAction={createSession}
           />
           <ClinicalCalendar createdCount={sessionSeed} onNotify={notify} />
-        </section>
+        </>
+      );
+    }
 
-        <section id="sessoes">
+    if (activeView === "sessoes") {
+      return (
+        <>
           <SectionHeading
             title="Sessoes"
             description="Evolucao clinica, presenca, tarefas terapeuticas, pagamentos, documentos e resumo de atendimento."
@@ -105,9 +106,13 @@ export function InteractiveHome() {
             onAction={createSession}
           />
           <SessionManagement createdCount={sessionSeed} onNotify={notify} />
-        </section>
+        </>
+      );
+    }
 
-        <section id="financeiro">
+    if (activeView === "financeiro") {
+      return (
+        <>
           <SectionHeading
             title="Financeiro"
             description="Faturas, mensalidades, adimplencia, inadimplencia, cobrancas, recibos e previsibilidade de caixa."
@@ -116,9 +121,13 @@ export function InteractiveHome() {
             onAction={() => notify("Use o botao Nova fatura dentro do financeiro.")}
           />
           <FinancePanel onNotify={notify} />
-        </section>
+        </>
+      );
+    }
 
-        <section id="documentos">
+    if (activeView === "documentos") {
+      return (
+        <>
           <SectionHeading
             title="Documentos"
             description="Modelos clinicos, prontuarios, contratos, termos, atestados, assinaturas, envio e impressao em PDF."
@@ -127,9 +136,13 @@ export function InteractiveHome() {
             onAction={openDocuments}
           />
           <DocumentCenter professionalName={professionalProfile.name} professionalRegister={professionalProfile.register} onNotify={notify} />
-        </section>
+        </>
+      );
+    }
 
-        <section id="relatorios">
+    if (activeView === "relatorios") {
+      return (
+        <>
           <SectionHeading
             title="Relatorios"
             description="Graficos de desempenho, status da agenda e impressao de prontuarios e resumos em PDF."
@@ -138,21 +151,43 @@ export function InteractiveHome() {
             onAction={() => window.print()}
           />
           <ReportsPanel patients={patients} onNotify={notify} />
-        </section>
+        </>
+      );
+    }
 
-        <section id="configuracoes">
-          <SectionHeading
-            title="Configuracoes"
-            description="Temas visuais da plataforma, preferencias da clinica e personalizacao da experiencia."
-            action="Tema padrao"
-            icon={<Settings className="h-4 w-4" />}
-            onAction={() => notify("Tema padrao Nexopsi selecionado.")}
-          />
-          <ThemeSettings onNotify={notify} />
-          <div className="mt-6">
-            <ProfessionalProfile initialProfile={professionalProfile} onNotify={notify} onSave={setProfessionalProfile} />
-          </div>
-        </section>
+    return (
+      <>
+        <SectionHeading
+          title="Configuracoes"
+          description="Temas visuais da plataforma, preferencias da clinica e personalizacao da experiencia."
+          action="Tema padrao"
+          icon={<Settings className="h-4 w-4" />}
+          onAction={() => notify("Tema padrao Nexopsi selecionado.")}
+        />
+        <ThemeSettings onNotify={notify} />
+        <div className="mt-6">
+          <ProfessionalProfile initialProfile={professionalProfile} onNotify={notify} onSave={setProfessionalProfile} />
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <AppShell
+      professionalName={professionalProfile.name}
+      professionalSpecialty={professionalProfile.specialty}
+      professionalPhotoUrl={professionalProfile.photoUrl}
+      activeView={activeView}
+      onNavigate={setActiveView}
+      onNotify={notify}
+      onCreatePatient={createPatient}
+      onCreateSession={createSession}
+    >
+      <div className="mx-auto max-w-[1500px] space-y-6">
+        <div className="rounded-md border border-secondary/25 bg-secondary-soft px-4 py-3 text-sm font-semibold text-secondary">
+          {message}
+        </div>
+        <div className="min-h-[calc(100vh-10rem)]">{renderActiveView()}</div>
       </div>
 
       {patientModalOpen ? <PatientRegistrationModal onClose={() => setPatientModalOpen(false)} onCreate={savePatient} /> : null}

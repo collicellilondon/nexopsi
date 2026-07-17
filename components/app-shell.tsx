@@ -23,15 +23,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-const navItems = [
-  { label: "Inicio", icon: Home },
-  { label: "Agenda", icon: CalendarDays },
-  { label: "Pacientes", icon: Users },
-  { label: "Sessoes", icon: Stethoscope },
-  { label: "Financeiro", icon: WalletCards },
-  { label: "Documentos", icon: FileText },
-  { label: "Relatorios", icon: BarChart3 },
-  { label: "Configuracoes", icon: Settings }
+export type AppView = "inicio" | "agenda" | "pacientes" | "sessoes" | "financeiro" | "documentos" | "relatorios" | "configuracoes";
+
+const navItems: Array<{ label: string; view: AppView; icon: typeof Home }> = [
+  { label: "Inicio", view: "inicio", icon: Home },
+  { label: "Agenda", view: "agenda", icon: CalendarDays },
+  { label: "Pacientes", view: "pacientes", icon: Users },
+  { label: "Sessoes", view: "sessoes", icon: Stethoscope },
+  { label: "Financeiro", view: "financeiro", icon: WalletCards },
+  { label: "Documentos", view: "documentos", icon: FileText },
+  { label: "Relatorios", view: "relatorios", icon: BarChart3 },
+  { label: "Configuracoes", view: "configuracoes", icon: Settings }
 ];
 
 type AppShellProps = {
@@ -39,46 +41,23 @@ type AppShellProps = {
   professionalName: string;
   professionalSpecialty: string;
   professionalPhotoUrl?: string;
+  activeView: AppView;
+  onNavigate: (view: AppView) => void;
   onNotify: (message: string) => void;
   onCreatePatient: () => void;
   onCreateSession: () => void;
 };
 
-export function AppShell({ children, professionalName, professionalSpecialty, professionalPhotoUrl, onNotify, onCreatePatient, onCreateSession }: AppShellProps) {
+export function AppShell({ children, professionalName, professionalSpecialty, professionalPhotoUrl, activeView, onNavigate, onNotify, onCreatePatient, onCreateSession }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [active, setActive] = useState("Inicio");
   const [query, setQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const initials = getInitials(professionalName);
 
-  function goTo(label: string) {
-    setActive(label);
-    const target =
-      label === "Agenda"
-        ? "agenda"
-        : label === "Pacientes"
-          ? "pacientes"
-          : label === "Sessoes"
-            ? "sessoes"
-            : label === "Financeiro"
-              ? "financeiro"
-              : label === "Documentos"
-                ? "documentos"
-                : label === "Relatorios"
-                  ? "relatorios"
-                  : label === "Configuracoes"
-                    ? "configuracoes"
-                    : "";
-    if (target) {
-      document.getElementById(target)?.scrollIntoView({ behavior: "smooth" });
-      onNotify(`Abrindo ${label.toLowerCase()} para teste.`);
-    } else if (label === "Inicio") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      onNotify("Voce voltou ao inicio.");
-    } else {
-      onNotify(`${label} esta habilitado em modo demonstracao nesta previa.`);
-    }
+  function goTo(view: AppView, label: string) {
+    onNavigate(view);
+    onNotify(`Abrindo ${label.toLowerCase()}.`);
     setMobileOpen(false);
   }
 
@@ -88,14 +67,16 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
       onNotify("Digite algo para executar a busca global.");
       return;
     }
-    const target = value.includes("document") || value.includes("contrato") || value.includes("prontuario")
+    const target: AppView = value.includes("document") || value.includes("contrato") || value.includes("prontuario")
       ? "documentos"
       : value.includes("finance") || value.includes("pagamento") || value.includes("fatura")
         ? "financeiro"
-        : value.includes("agenda") || value.includes("sess")
+        : value.includes("agenda")
           ? "agenda"
+          : value.includes("sess")
+          ? "sessoes"
           : "pacientes";
-    document.getElementById(target)?.scrollIntoView({ behavior: "smooth" });
+    onNavigate(target);
     onNotify(`Busca global executada por "${query}".`);
   }
 
@@ -131,10 +112,10 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
             <button
               key={item.label}
               type="button"
-              onClick={() => goTo(item.label)}
+              onClick={() => goTo(item.view, item.label)}
               className={cn(
                 "flex h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold text-ink-muted transition hover:bg-primary-soft hover:text-primary",
-                active === item.label && "bg-primary text-white hover:bg-primary hover:text-white",
+                activeView === item.view && "bg-primary text-white hover:bg-primary hover:text-white",
                 collapsed && "lg:justify-center lg:px-0"
               )}
               title={collapsed ? item.label : undefined}
