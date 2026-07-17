@@ -1,41 +1,57 @@
 "use client";
 
 import { useState } from "react";
-import { Camera, Save } from "lucide-react";
+import { Camera, CheckCircle2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-export function ProfessionalProfile({ onNotify }: { onNotify: (message: string) => void }) {
-  const [profile, setProfile] = useState({
-    name: "Tatiane Bonfin",
-    register: "CRP 06/123456",
-    email: "tatiane@nexopsi.com",
-    phone: "(11) 99999-0000",
-    specialty: "Psicologia clínica",
-    bio: "Atendimento adulto com foco em ansiedade, organização emocional e qualidade de vida."
-  });
+export type ProfessionalProfileData = {
+  name: string;
+  register: string;
+  email: string;
+  phone: string;
+  specialty: string;
+  bio: string;
+};
 
-  function update(field: keyof typeof profile, value: string) {
+type ProfessionalProfileProps = {
+  initialProfile: ProfessionalProfileData;
+  onNotify: (message: string) => void;
+  onSave: (profile: ProfessionalProfileData) => void;
+};
+
+export function ProfessionalProfile({ initialProfile, onNotify, onSave }: ProfessionalProfileProps) {
+  const [profile, setProfile] = useState<ProfessionalProfileData>(initialProfile);
+  const [saved, setSaved] = useState(false);
+
+  function update(field: keyof ProfessionalProfileData, value: string) {
     setProfile((current) => ({ ...current, [field]: value }));
+    setSaved(false);
+  }
+
+  function saveProfile() {
+    onSave(profile);
+    setSaved(true);
+    onNotify(`Cadastro profissional salvo para ${profile.name}.`);
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Cadastro da psicóloga</CardTitle>
-        <CardDescription>Informações usadas em documentos, recibos, prontuários e relatórios.</CardDescription>
+        <CardTitle>Cadastro da psicologa</CardTitle>
+        <CardDescription>Informacoes usadas em documentos, recibos, prontuarios e relatorios.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <div className="rounded-lg border border-border bg-background p-5 text-center">
           <div className="mx-auto flex h-32 w-32 items-center justify-center overflow-hidden rounded-full bg-primary-soft text-4xl font-black text-primary">
-            TB
+            {getInitials(profile.name)}
           </div>
-          <Button type="button" variant="outline" className="mt-4 w-full" onClick={() => onNotify("Upload de foto preparado para integração com Supabase Storage.")}>
+          <Button type="button" variant="outline" className="mt-4 w-full" onClick={() => onNotify("Upload de foto preparado para integracao com Supabase Storage.")}>
             <Camera className="h-4 w-4" />
             Alterar foto
           </Button>
-          <p className="mt-3 text-sm text-ink-muted">Foto profissional da Tatiane Bonfin para cabeçalhos e documentos.</p>
+          <p className="mt-3 text-sm text-ink-muted">Foto profissional de {profile.name} para cabecalhos e documentos.</p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -49,8 +65,14 @@ export function ProfessionalProfile({ onNotify }: { onNotify: (message: string) 
             Bio profissional
             <textarea className="mt-2 min-h-28 w-full rounded-md border border-border bg-white p-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" value={profile.bio} onChange={(event) => update("bio", event.target.value)} />
           </label>
+          {saved ? (
+            <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm font-bold text-green-700 md:col-span-2">
+              <CheckCircle2 className="h-4 w-4" />
+              Cadastro salvo. O cabecalho ja foi atualizado com {profile.name}.
+            </div>
+          ) : null}
           <div className="flex justify-end md:col-span-2">
-            <Button type="button" onClick={() => onNotify("Cadastro profissional salvo.")}>
+            <Button type="button" onClick={saveProfile}>
               <Save className="h-4 w-4" />
               Salvar cadastro
             </Button>
@@ -68,4 +90,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <div className="mt-2">{children}</div>
     </label>
   );
+}
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "NX";
 }

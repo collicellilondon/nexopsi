@@ -24,52 +24,55 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { label: "Início", icon: Home },
+  { label: "Inicio", icon: Home },
   { label: "Agenda", icon: CalendarDays },
   { label: "Pacientes", icon: Users },
-  { label: "Sessões", icon: Stethoscope },
+  { label: "Sessoes", icon: Stethoscope },
   { label: "Financeiro", icon: WalletCards },
   { label: "Documentos", icon: FileText },
-  { label: "Relatórios", icon: BarChart3 },
-  { label: "Configurações", icon: Settings }
+  { label: "Relatorios", icon: BarChart3 },
+  { label: "Configuracoes", icon: Settings }
 ];
 
 type AppShellProps = {
   children: React.ReactNode;
+  professionalName: string;
+  professionalSpecialty: string;
   onNotify: (message: string) => void;
   onCreatePatient: () => void;
   onCreateSession: () => void;
 };
 
-export function AppShell({ children, onNotify, onCreatePatient, onCreateSession }: AppShellProps) {
+export function AppShell({ children, professionalName, professionalSpecialty, onNotify, onCreatePatient, onCreateSession }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [active, setActive] = useState("Início");
+  const [active, setActive] = useState("Inicio");
   const [query, setQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
+  const initials = getInitials(professionalName);
 
   function goTo(label: string) {
     setActive(label);
     const target =
       label === "Agenda"
-          ? "agenda"
+        ? "agenda"
         : label === "Pacientes"
           ? "pacientes"
           : label === "Financeiro"
             ? "financeiro"
-          : label === "Relatórios"
-            ? "relatorios"
-            : label === "Configurações"
-              ? "configuracoes"
-              : "";
+            : label === "Relatorios"
+              ? "relatorios"
+              : label === "Configuracoes"
+                ? "configuracoes"
+                : "";
     if (target) {
       document.getElementById(target)?.scrollIntoView({ behavior: "smooth" });
       onNotify(`Abrindo ${label.toLowerCase()} para teste.`);
-    } else if (label === "Início") {
+    } else if (label === "Inicio") {
       window.scrollTo({ top: 0, behavior: "smooth" });
-      onNotify("Você voltou ao início.");
+      onNotify("Voce voltou ao inicio.");
     } else {
-      onNotify(`${label} está habilitado em modo demonstração nesta prévia.`);
+      onNotify(`${label} esta habilitado em modo demonstracao nesta previa.`);
     }
     setMobileOpen(false);
   }
@@ -104,7 +107,7 @@ export function AppShell({ children, onNotify, onCreatePatient, onCreateSession 
             <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-sm font-black text-white">NX</div>
             <div className={cn("min-w-0", collapsed && "lg:hidden")}>
               <p className="text-sm font-black text-ink">Nexopsi</p>
-              <p className="text-xs text-ink-muted">Gestão clínica</p>
+              <p className="text-xs text-ink-muted">Gestao clinica</p>
             </div>
           </div>
           <Button type="button" variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Fechar menu">
@@ -132,17 +135,17 @@ export function AppShell({ children, onNotify, onCreatePatient, onCreateSession 
         </nav>
 
         <div className="space-y-2 border-t border-border pt-4">
-          <button type="button" onClick={() => onNotify("Central de ajuda aberta em modo demonstração.")} className={cn("flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-semibold text-ink-muted hover:bg-primary-soft", collapsed && "lg:justify-center lg:px-0")}>
+          <button type="button" onClick={() => onNotify("Central de ajuda aberta em modo demonstracao.")} className={cn("flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-semibold text-ink-muted hover:bg-primary-soft", collapsed && "lg:justify-center lg:px-0")}>
             <CircleHelp className="h-5 w-5" />
             <span className={cn(collapsed && "lg:hidden")}>Ajuda</span>
           </button>
-          <button type="button" onClick={() => onNotify("Perfil de Ana Ribeiro selecionado.")} className={cn("flex w-full items-center gap-3 rounded-md bg-background p-2 text-left", collapsed && "lg:justify-center")}>
+          <button type="button" onClick={() => onNotify(`Perfil de ${professionalName} selecionado.`)} className={cn("flex w-full items-center gap-3 rounded-md bg-background p-2 text-left", collapsed && "lg:justify-center")}>
             <Avatar>
-              <AvatarFallback>AR</AvatarFallback>
+              <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
             <div className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
-              <p className="truncate text-sm font-bold text-ink">Ana Ribeiro</p>
-              <p className="truncate text-xs text-ink-muted">Psicóloga clínica</p>
+              <p className="truncate text-sm font-bold text-ink">{professionalName}</p>
+              <p className="truncate text-xs text-ink-muted">{professionalSpecialty}</p>
             </div>
           </button>
           <button type="button" onClick={signOut} className={cn("flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-semibold text-destructive hover:bg-red-50", collapsed && "lg:justify-center lg:px-0")}>
@@ -167,7 +170,7 @@ export function AppShell({ children, onNotify, onCreatePatient, onCreateSession 
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
               <Input
                 className="pl-9"
-                placeholder="Buscar paciente, documento, sessão ou pagamento"
+                placeholder="Buscar paciente, documento, sessao ou pagamento"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={(event) => {
@@ -177,27 +180,33 @@ export function AppShell({ children, onNotify, onCreatePatient, onCreateSession 
             </div>
             <Button type="button" className="hidden sm:inline-flex" onClick={onCreateSession}>
               <Plus className="h-4 w-4" />
-              Ação rápida
+              Acao rapida
             </Button>
-            <Button type="button" variant="outline" size="icon" aria-label="Notificações" onClick={() => setShowNotifications((value) => !value)}>
+            <Button type="button" variant="outline" size="icon" aria-label="Notificacoes" onClick={() => setShowNotifications((value) => !value)}>
               <Bell className="h-5 w-5" />
             </Button>
-            <Avatar className="hidden sm:flex">
-              <AvatarFallback>AR</AvatarFallback>
-            </Avatar>
+            <div className="hidden min-w-0 items-center gap-3 rounded-md border border-border bg-white px-2 py-1.5 sm:flex">
+              <div className="min-w-0 text-right">
+                <p className="max-w-40 truncate text-sm font-black text-ink">{professionalName}</p>
+                <p className="max-w-40 truncate text-xs font-semibold text-ink-muted">{professionalSpecialty}</p>
+              </div>
+              <Avatar>
+                <AvatarFallback>{initials}</AvatarFallback>
+              </Avatar>
+            </div>
           </div>
         </header>
 
         {showNotifications ? (
           <div className={cn("fixed right-4 top-16 z-30 w-[min(360px,calc(100vw-2rem))] rounded-lg border border-border bg-white p-4 shadow-soft", collapsed ? "lg:right-6" : "lg:right-8")}>
             <div className="flex items-center justify-between gap-3">
-              <p className="font-black text-ink">Notificações</p>
+              <p className="font-black text-ink">Notificacoes</p>
               <Button type="button" size="sm" variant="ghost" onClick={() => setShowNotifications(false)}>
                 Fechar
               </Button>
             </div>
             <div className="mt-3 space-y-2 text-sm">
-              {["Pagamento de Caio vence hoje.", "3 evoluções clínicas pendentes.", "Horário de sexta às 10:30 disponível."].map((item) => (
+              {["Pagamento de Caio vence hoje.", "3 evolucoes clinicas pendentes.", "Horario de sexta as 10:30 disponivel."].map((item) => (
                 <button key={item} type="button" onClick={() => onNotify(item)} className="w-full rounded-md bg-background p-3 text-left font-semibold text-ink hover:bg-primary-soft">
                   {item}
                 </button>
@@ -208,7 +217,7 @@ export function AppShell({ children, onNotify, onCreatePatient, onCreateSession 
                 Paciente
               </Button>
               <Button type="button" size="sm" onClick={onCreateSession}>
-                Sessão
+                Sessao
               </Button>
             </div>
           </div>
@@ -218,4 +227,13 @@ export function AppShell({ children, onNotify, onCreatePatient, onCreateSession 
       </div>
     </div>
   );
+}
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "NX";
 }
