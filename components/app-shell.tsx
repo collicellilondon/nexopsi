@@ -18,7 +18,7 @@ import {
   Users,
   WalletCards
 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -38,12 +38,13 @@ type AppShellProps = {
   children: React.ReactNode;
   professionalName: string;
   professionalSpecialty: string;
+  professionalPhotoUrl?: string;
   onNotify: (message: string) => void;
   onCreatePatient: () => void;
   onCreateSession: () => void;
 };
 
-export function AppShell({ children, professionalName, professionalSpecialty, onNotify, onCreatePatient, onCreateSession }: AppShellProps) {
+export function AppShell({ children, professionalName, professionalSpecialty, professionalPhotoUrl, onNotify, onCreatePatient, onCreateSession }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [active, setActive] = useState("Inicio");
@@ -141,6 +142,7 @@ export function AppShell({ children, professionalName, professionalSpecialty, on
           </button>
           <button type="button" onClick={() => onNotify(`Perfil de ${professionalName} selecionado.`)} className={cn("flex w-full items-center gap-3 rounded-md bg-background p-2 text-left", collapsed && "lg:justify-center")}>
             <Avatar>
+              {professionalPhotoUrl ? <AvatarImage src={professionalPhotoUrl} alt={`Foto de ${professionalName}`} /> : null}
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
             <div className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
@@ -191,6 +193,7 @@ export function AppShell({ children, professionalName, professionalSpecialty, on
                 <p className="max-w-40 truncate text-xs font-semibold text-ink-muted">{professionalSpecialty}</p>
               </div>
               <Avatar>
+                {professionalPhotoUrl ? <AvatarImage src={professionalPhotoUrl} alt={`Foto de ${professionalName}`} /> : null}
                 <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
             </div>

@@ -24,7 +24,8 @@ export function InteractiveHome() {
     email: "tatiane@nexopsi.com",
     phone: "(11) 99999-0000",
     specialty: "Psicologia clinica",
-    bio: "Atendimento adulto com foco em ansiedade, organizacao emocional e qualidade de vida."
+    bio: "Atendimento adulto com foco em ansiedade, organizacao emocional e qualidade de vida.",
+    photoUrl: ""
   });
   const [message, setMessage] = useState("Ambiente de testes ativo: os dados sao mockados e reiniciam ao recarregar.");
 
@@ -54,6 +55,7 @@ export function InteractiveHome() {
     <AppShell
       professionalName={professionalProfile.name}
       professionalSpecialty={professionalProfile.specialty}
+      professionalPhotoUrl={professionalProfile.photoUrl}
       onNotify={notify}
       onCreatePatient={createPatient}
       onCreateSession={createSession}

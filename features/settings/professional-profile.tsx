@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import Image from "next/image";
 import { Camera, CheckCircle2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +14,7 @@ export type ProfessionalProfileData = {
   phone: string;
   specialty: string;
   bio: string;
+  photoUrl?: string;
 };
 
 type ProfessionalProfileProps = {
@@ -24,6 +26,7 @@ type ProfessionalProfileProps = {
 export function ProfessionalProfile({ initialProfile, onNotify, onSave }: ProfessionalProfileProps) {
   const [profile, setProfile] = useState<ProfessionalProfileData>(initialProfile);
   const [saved, setSaved] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   function update(field: keyof ProfessionalProfileData, value: string) {
     setProfile((current) => ({ ...current, [field]: value }));
@@ -36,6 +39,22 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave }: Profes
     onNotify(`Cadastro profissional salvo para ${profile.name}.`);
   }
 
+  function changePhoto(file?: File) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      onNotify("Selecione um arquivo de imagem para a foto profissional.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const photoUrl = String(reader.result);
+      setProfile((current) => ({ ...current, photoUrl }));
+      setSaved(false);
+      onNotify("Foto carregada. Clique em Salvar cadastro para aplicar no cabecalho.");
+    };
+    reader.readAsDataURL(file);
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -45,9 +64,16 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave }: Profes
       <CardContent className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <div className="rounded-lg border border-border bg-background p-5 text-center">
           <div className="mx-auto flex h-32 w-32 items-center justify-center overflow-hidden rounded-full bg-primary-soft text-4xl font-black text-primary">
-            {getInitials(profile.name)}
+            {profile.photoUrl ? <Image src={profile.photoUrl} alt={`Foto de ${profile.name}`} width={128} height={128} unoptimized className="h-full w-full object-cover" /> : getInitials(profile.name)}
           </div>
-          <Button type="button" variant="outline" className="mt-4 w-full" onClick={() => onNotify("Upload de foto preparado para integracao com Supabase Storage.")}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={(event) => changePhoto(event.target.files?.[0])}
+          />
+          <Button type="button" variant="outline" className="mt-4 w-full" onClick={() => fileInputRef.current?.click()}>
             <Camera className="h-4 w-4" />
             Alterar foto
           </Button>
