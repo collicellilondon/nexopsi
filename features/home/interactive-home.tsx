@@ -135,7 +135,13 @@ export function InteractiveHome() {
             icon={<FileText className="h-4 w-4" />}
             onAction={openDocuments}
           />
-          <DocumentCenter professionalName={professionalProfile.name} professionalRegister={professionalProfile.register} onNotify={notify} />
+          <DocumentCenter
+            professionalName={professionalProfile.name}
+            professionalRegister={professionalProfile.register}
+            professionalEmail={professionalProfile.email}
+            professionalPhone={professionalProfile.phone}
+            onNotify={notify}
+          />
         </>
       );
     }
@@ -150,7 +156,14 @@ export function InteractiveHome() {
             icon={<Plus className="h-4 w-4" />}
             onAction={() => window.print()}
           />
-          <ReportsPanel patients={patients} onNotify={notify} />
+          <ReportsPanel
+            patients={patients}
+            professionalName={professionalProfile.name}
+            professionalRegister={professionalProfile.register}
+            professionalEmail={professionalProfile.email}
+            professionalPhone={professionalProfile.phone}
+            onNotify={notify}
+          />
         </>
       );
     }

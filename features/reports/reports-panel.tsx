@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { FileDown, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,11 +22,20 @@ const monthlyData = [
   { month: "Jul", sessoes: 112, novos: 18 }
 ];
 
-export function ReportsPanel({ patients, onNotify }: { patients: Patient[]; onNotify: (message: string) => void }) {
+type ReportsPanelProps = {
+  patients: Patient[];
+  professionalName: string;
+  professionalRegister: string;
+  professionalEmail: string;
+  professionalPhone: string;
+  onNotify: (message: string) => void;
+};
+
+export function ReportsPanel({ patients, professionalName, professionalRegister, professionalEmail, professionalPhone, onNotify }: ReportsPanelProps) {
   const featuredPatient = patients[0];
 
   function printReport(kind: string) {
-    onNotify(`${kind} preparado para impressão em PDF.`);
+    onNotify(`${kind} preparado para impressao em PDF.`);
     setTimeout(() => window.print(), 120);
   }
 
@@ -35,7 +45,7 @@ export function ReportsPanel({ patients, onNotify }: { patients: Patient[]; onNo
         <Card>
           <CardHeader>
             <CardTitle>Resumo mensal</CardTitle>
-            <CardDescription>Sessões realizadas e entrada de novos pacientes.</CardDescription>
+            <CardDescription>Sessoes realizadas e entrada de novos pacientes.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-72">
@@ -45,7 +55,7 @@ export function ReportsPanel({ patients, onNotify }: { patients: Patient[]; onNo
                   <XAxis dataKey="month" />
                   <YAxis />
                   <Tooltip />
-                  <Bar dataKey="sessoes" name="Sessões" fill="#245B68" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="sessoes" name="Sessoes" fill="#245B68" radius={[6, 6, 0, 0]} />
                   <Bar dataKey="novos" name="Novos pacientes" fill="#5F9E8C" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -56,7 +66,7 @@ export function ReportsPanel({ patients, onNotify }: { patients: Patient[]; onNo
         <Card>
           <CardHeader>
             <CardTitle>Status de agendamentos</CardTitle>
-            <CardDescription>Distribuição dos atendimentos do mês.</CardDescription>
+            <CardDescription>Distribuicao dos atendimentos do mes.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-72">
@@ -84,12 +94,12 @@ export function ReportsPanel({ patients, onNotify }: { patients: Patient[]; onNo
       <Card>
         <CardHeader>
           <CardTitle>Documentos para PDF</CardTitle>
-          <CardDescription>Imprima prontuários e resumos em uma folha com cabeçalho e marca d&apos;água.</CardDescription>
+          <CardDescription>Imprima prontuarios e resumos em uma folha com cabecalho, logo e marca d&apos;agua.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {["Prontuário completo", "Resumo clínico", "Relatório financeiro", "Histórico de presença"].map((item) => (
+          {["Prontuario completo", "Resumo clinico", "Relatorio financeiro", "Historico de presenca"].map((item) => (
             <Button key={item} type="button" variant="outline" className="justify-start" onClick={() => printReport(item)}>
-              {item.includes("Prontuário") ? <Printer className="h-4 w-4" /> : <FileDown className="h-4 w-4" />}
+              {item.includes("Prontuario") ? <Printer className="h-4 w-4" /> : <FileDown className="h-4 w-4" />}
               {item}
             </Button>
           ))}
@@ -98,28 +108,64 @@ export function ReportsPanel({ patients, onNotify }: { patients: Patient[]; onNo
 
       <section className="print-sheet rounded-lg border border-border bg-white p-8 shadow-soft">
         <div className="watermark">Nexopsi</div>
-        <header className="flex items-start justify-between border-b border-border pb-5">
-          <div>
-            <p className="text-sm font-black uppercase tracking-wide text-primary">Nexopsi</p>
-            <h3 className="mt-2 text-2xl font-black text-ink">Prontuário e resumo do paciente</h3>
-            <p className="text-sm text-ink-muted">Documento demonstrativo para impressão em PDF.</p>
-          </div>
-          <div className="text-right text-sm text-ink-muted">
-            <p>Tatiane Bonfin</p>
-            <p>Psicóloga responsável</p>
-            <p>Emitido em 16/07/2026</p>
-          </div>
-        </header>
+        <ProfessionalPrintHeader
+          title="Prontuario e resumo do paciente"
+          subtitle="Documento clinico para impressao em PDF"
+          professionalName={professionalName}
+          professionalRegister={professionalRegister}
+          professionalEmail={professionalEmail}
+          professionalPhone={professionalPhone}
+        />
         <div className="mt-6 grid gap-5 md:grid-cols-2">
           <Info title="Paciente" value={featuredPatient?.name ?? "Marina Duarte"} />
           <Info title="Contato" value={featuredPatient?.phone ?? "(11) 99842-1022"} />
           <Info title="E-mail" value={featuredPatient?.email ?? "paciente@email.com"} />
-          <Info title="Endereço" value={featuredPatient?.address ?? "Endereço cadastral completo"} />
-          <Info title="Queixa principal" value={featuredPatient?.mainComplaint ?? "Acompanhamento terapêutico contínuo com foco em organização emocional."} />
-          <Info title="Última evolução" value="Paciente compareceu à sessão, manteve boa adesão e recebeu tarefa terapêutica para a próxima semana." />
+          <Info title="Endereco" value={featuredPatient?.address ?? "Endereco cadastral completo"} />
+          <Info title="Queixa principal" value={featuredPatient?.mainComplaint ?? "Acompanhamento terapeutico continuo com foco em organizacao emocional."} />
+          <Info title="Ultima evolucao" value="Paciente compareceu a sessao, manteve boa adesao e recebeu tarefa terapeutica para a proxima semana." />
         </div>
+        <footer className="mt-8 border-t border-border pt-5 text-sm text-ink-muted">
+          Assinatura profissional: {professionalName} - {professionalRegister}
+        </footer>
       </section>
     </div>
+  );
+}
+
+function ProfessionalPrintHeader({
+  title,
+  subtitle,
+  professionalName,
+  professionalRegister,
+  professionalEmail,
+  professionalPhone
+}: {
+  title: string;
+  subtitle: string;
+  professionalName: string;
+  professionalRegister: string;
+  professionalEmail: string;
+  professionalPhone: string;
+}) {
+  return (
+    <header className="border-b border-border pb-5">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex h-14 w-48 items-center overflow-hidden rounded-md bg-white">
+            <Image src="/brand/nexopsi-logo.png" alt="Nexopsi" width={210} height={105} className="h-full w-full object-contain" />
+          </div>
+          <h3 className="mt-4 text-2xl font-black text-ink">{title}</h3>
+          <p className="text-sm font-semibold text-ink-muted">{subtitle}</p>
+        </div>
+        <div className="rounded-md border border-border bg-background p-4 text-right text-sm text-ink-muted">
+          <p className="font-black text-ink">{professionalName}</p>
+          <p>{professionalRegister}</p>
+          <p>{professionalEmail}</p>
+          <p>{professionalPhone}</p>
+          <p className="mt-2 font-semibold">Emitido em 17/07/2026</p>
+        </div>
+      </div>
+    </header>
   );
 }
 

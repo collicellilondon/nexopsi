@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import {
   CheckCircle2,
   ClipboardCheck,
@@ -158,10 +159,12 @@ const statusLabel: Record<DocumentStatus, string> = {
 type DocumentCenterProps = {
   professionalName: string;
   professionalRegister: string;
+  professionalEmail: string;
+  professionalPhone: string;
   onNotify: (message: string) => void;
 };
 
-export function DocumentCenter({ professionalName, professionalRegister, onNotify }: DocumentCenterProps) {
+export function DocumentCenter({ professionalName, professionalRegister, professionalEmail, professionalPhone, onNotify }: DocumentCenterProps) {
   const [documents, setDocuments] = useState(initialDocuments);
   const [selectedId, setSelectedId] = useState(initialDocuments[0].id);
   const [query, setQuery] = useState("");
@@ -274,7 +277,7 @@ export function DocumentCenter({ professionalName, professionalRegister, onNotif
             <CardContent className="space-y-4">
               <div className="grid gap-3 md:grid-cols-2">
                 <Info icon={FileText} label="Tipo" value={selected.kind} />
-                <Info icon={LockKeyhole} label="Responsavel" value={selected.owner} />
+                <Info icon={LockKeyhole} label="Responsavel" value={professionalName} />
                 <Info icon={ShieldCheck} label="Seguranca" value="Documento clinico confidencial" />
                 <Info icon={FileClock} label="Vencimento" value={selected.expiresAt ? formatDate(selected.expiresAt) : "Sem vencimento"} />
               </div>
@@ -342,23 +345,19 @@ export function DocumentCenter({ professionalName, professionalRegister, onNotif
 
       <section className="print-sheet rounded-lg border border-border bg-white p-8 shadow-soft">
         <div className="watermark">Nexopsi</div>
-        <header className="flex items-start justify-between border-b border-border pb-5">
-          <div>
-            <p className="text-sm font-black uppercase tracking-wide text-primary">Nexopsi</p>
-            <h3 className="mt-2 text-2xl font-black text-ink">{selected.title}</h3>
-            <p className="text-sm text-ink-muted">Documento clinico confidencial.</p>
-          </div>
-          <div className="text-right text-sm text-ink-muted">
-            <p>{professionalName}</p>
-            <p>{professionalRegister}</p>
-            <p>Emitido em 17/07/2026</p>
-          </div>
-        </header>
+        <ProfessionalPrintHeader
+          title={selected.title}
+          subtitle="Documento clinico confidencial"
+          professionalName={professionalName}
+          professionalRegister={professionalRegister}
+          professionalEmail={professionalEmail}
+          professionalPhone={professionalPhone}
+        />
         <div className="mt-6 grid gap-5 md:grid-cols-2">
           <InfoBlock title="Paciente" value={selected.patient} />
           <InfoBlock title="Tipo" value={selected.kind} />
           <InfoBlock title="Status" value={statusLabel[selected.status]} />
-          <InfoBlock title="Responsavel" value={selected.owner} />
+          <InfoBlock title="Responsavel" value={professionalName} />
           <div className="md:col-span-2">
             <InfoBlock title="Conteudo" value={selected.content} />
           </div>
@@ -412,4 +411,41 @@ function InfoBlock({ title, value }: { title: string; value: string }) {
 
 function formatDate(value: string) {
   return new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function ProfessionalPrintHeader({
+  title,
+  subtitle,
+  professionalName,
+  professionalRegister,
+  professionalEmail,
+  professionalPhone
+}: {
+  title: string;
+  subtitle: string;
+  professionalName: string;
+  professionalRegister: string;
+  professionalEmail: string;
+  professionalPhone: string;
+}) {
+  return (
+    <header className="border-b border-border pb-5">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex h-14 w-48 items-center overflow-hidden rounded-md bg-white">
+            <Image src="/brand/nexopsi-logo.png" alt="Nexopsi" width={210} height={105} className="h-full w-full object-contain" />
+          </div>
+          <h3 className="mt-4 text-2xl font-black text-ink">{title}</h3>
+          <p className="text-sm font-semibold text-ink-muted">{subtitle}</p>
+        </div>
+        <div className="rounded-md border border-border bg-background p-4 text-right text-sm text-ink-muted">
+          <p className="font-black text-ink">{professionalName}</p>
+          <p>{professionalRegister}</p>
+          <p>{professionalEmail}</p>
+          <p>{professionalPhone}</p>
+          <p className="mt-2 font-semibold">Emitido em 17/07/2026</p>
+        </div>
+      </div>
+    </header>
+  );
 }

@@ -114,7 +114,16 @@ export function LoginPage() {
           <div className="flex flex-1 items-center justify-center">
             <div className="w-full max-w-[430px] animate-[authEnter_520ms_ease-out]">
               <div className="mb-8">
-                <p className="text-sm font-bold text-secondary">Nexopsi</p>
+                <div className="mb-5 flex h-16 w-52 items-center overflow-hidden rounded-md bg-white">
+                  <Image
+                    src="/brand/nexopsi-logo.png"
+                    alt="Nexopsi"
+                    width={220}
+                    height={110}
+                    priority
+                    className="h-full w-full object-contain"
+                  />
+                </div>
                 <h1 className="mt-3 text-3xl font-black tracking-tight text-ink">Bem-vindo de volta</h1>
                 <p className="mt-2 text-sm leading-6 text-[#667085]">Entre para continuar cuidando da sua clínica.</p>
               </div>
@@ -249,7 +258,7 @@ function InstitutionalPanel() {
       <div className="absolute inset-x-20 top-1/2 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
 
       <div className="relative z-10">
-        <BrandMark />
+        <p className="text-xl font-black text-white">Nexopsi</p>
         <p className="mt-3 text-sm text-white/70">Gestão clínica simples, segura e humana.</p>
       </div>
 
