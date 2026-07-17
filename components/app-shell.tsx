@@ -33,14 +33,14 @@ export type SearchSuggestion = {
 };
 
 const navItems: Array<{ label: string; view: AppView; icon: typeof Home }> = [
-  { label: "Inicio", view: "inicio", icon: Home },
+  { label: "Início", view: "inicio", icon: Home },
   { label: "Agenda", view: "agenda", icon: CalendarDays },
   { label: "Pacientes", view: "pacientes", icon: Users },
-  { label: "Sessoes", view: "sessoes", icon: Stethoscope },
+  { label: "Sessões", view: "sessoes", icon: Stethoscope },
   { label: "Financeiro", view: "financeiro", icon: WalletCards },
   { label: "Documentos", view: "documentos", icon: FileText },
-  { label: "Relatorios", view: "relatorios", icon: BarChart3 },
-  { label: "Configuracoes", view: "configuracoes", icon: Settings }
+  { label: "Relatórios", view: "relatorios", icon: BarChart3 },
+  { label: "Configurações", view: "configuracoes", icon: Settings }
 ];
 
 type AppShellProps = {
@@ -148,7 +148,7 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
         </nav>
 
         <div className="space-y-2 border-t border-border pt-4">
-          <button type="button" onClick={() => onNotify("Central de ajuda aberta em modo demonstracao.")} className={cn("flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-semibold text-ink-muted hover:bg-primary-soft", collapsed && "lg:justify-center lg:px-0")}>
+          <button type="button" onClick={() => onNotify("Central de ajuda aberta em modo demonstração.")} className={cn("flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-semibold text-ink-muted hover:bg-primary-soft", collapsed && "lg:justify-center lg:px-0")}>
             <CircleHelp className="h-5 w-5" />
             <span className={cn(collapsed && "lg:hidden")}>Ajuda</span>
           </button>
@@ -184,7 +184,7 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
               <Input
                 className="pl-9"
-                placeholder="Buscar paciente, documento, sessao, funcao ou pagamento"
+                placeholder="Buscar paciente, documento, sessão, função ou pagamento"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 onFocus={() => setSearchFocused(true)}
@@ -195,7 +195,7 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
               </Button>
               {searchFocused && visibleSuggestions.length > 0 ? (
                 <div className="absolute left-0 right-24 top-12 z-40 overflow-hidden rounded-lg border border-border bg-white shadow-soft">
-                  <div className="border-b border-border bg-background px-3 py-2 text-xs font-black uppercase text-ink-muted">Sugestoes de pacientes</div>
+                  <div className="border-b border-border bg-background px-3 py-2 text-xs font-black uppercase text-ink-muted">Sugestões de pacientes</div>
                   {visibleSuggestions.map((suggestion) => (
                     <button key={suggestion.id} type="button" className="flex w-full items-start gap-3 px-3 py-3 text-left transition hover:bg-primary-soft" onMouseDown={(event) => event.preventDefault()} onClick={() => selectSuggestion(suggestion)}>
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-soft text-xs font-black text-primary">{getInitials(suggestion.label)}</span>
@@ -210,9 +210,9 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
             </form>
             <Button type="button" className="hidden sm:inline-flex" onClick={onCreateSession}>
               <Plus className="h-4 w-4" />
-              Acao rapida
+              Ação rápida
             </Button>
-            <Button type="button" variant="outline" size="icon" aria-label="Notificacoes" onClick={() => setShowNotifications((value) => !value)}>
+            <Button type="button" variant="outline" size="icon" aria-label="Notificações" onClick={() => setShowNotifications((value) => !value)}>
               <Bell className="h-5 w-5" />
             </Button>
             <div className="hidden min-w-0 items-center gap-3 rounded-md border border-border bg-white px-2 py-1.5 sm:flex">
@@ -231,13 +231,13 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
         {showNotifications ? (
           <div className={cn("fixed right-4 top-16 z-30 w-[min(360px,calc(100vw-2rem))] rounded-lg border border-border bg-white p-4 shadow-soft", collapsed ? "lg:right-6" : "lg:right-8")}>
             <div className="flex items-center justify-between gap-3">
-              <p className="font-black text-ink">Notificacoes</p>
+              <p className="font-black text-ink">Notificações</p>
               <Button type="button" size="sm" variant="ghost" onClick={() => setShowNotifications(false)}>
                 Fechar
               </Button>
             </div>
             <div className="mt-3 space-y-2 text-sm">
-              {["Nenhuma notificacao pendente.", "Cadastre pacientes para gerar alertas.", "Agenda pronta para novos horarios."].map((item) => (
+              {["Nenhuma notificação pendente.", "Cadastre pacientes para gerar alertas.", "Agenda pronta para novos horários."].map((item) => (
                 <button key={item} type="button" onClick={() => onNotify(item)} className="w-full rounded-md bg-background p-3 text-left font-semibold text-ink hover:bg-primary-soft">
                   {item}
                 </button>
@@ -248,7 +248,7 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
                 Paciente
               </Button>
               <Button type="button" size="sm" onClick={onCreateSession}>
-                Sessao
+                Sessão
               </Button>
             </div>
           </div>

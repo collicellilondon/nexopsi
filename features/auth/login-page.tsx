@@ -138,7 +138,7 @@ export function LoginPage() {
                       id="email"
                       type="email"
                       autoComplete="email"
-                      placeholder="voce@clinica.com"
+                      placeholder="contato@clinica.com"
                       className="h-12 rounded-md border-[#E4E7EC] pl-10"
                       aria-invalid={Boolean(form.formState.errors.email)}
                       aria-describedby={form.formState.errors.email ? "email-error" : undefined}
@@ -235,7 +235,7 @@ export function LoginPage() {
             <p className="mt-2 text-sm leading-6 text-[#667085]">Informe seu e-mail e enviaremos as instruções de recuperação.</p>
             <form className="mt-5 space-y-4" onSubmit={recoveryForm.handleSubmit(onRecovery)} noValidate>
               <Field label="E-mail" error={recoveryForm.formState.errors.email?.message} htmlFor="recovery-email">
-                <Input id="recovery-email" type="email" autoComplete="email" placeholder="voce@clinica.com" className="h-12" {...recoveryForm.register("email")} />
+                <Input id="recovery-email" type="email" autoComplete="email" placeholder="contato@clinica.com" className="h-12" {...recoveryForm.register("email")} />
               </Field>
               <div className="grid gap-2 sm:grid-cols-2">
                 <Button type="button" variant="outline" onClick={() => setRecoveryOpen(false)}>Cancelar</Button>

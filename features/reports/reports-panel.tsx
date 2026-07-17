@@ -35,7 +35,7 @@ export function ReportsPanel({ patients, professionalName, professionalRegister,
   const featuredPatient = patients[0];
 
   function printReport(kind: string) {
-    onNotify(`${kind} preparado para impressao em PDF.`);
+    onNotify(`${kind} preparado para impressão em PDF.`);
     setTimeout(() => window.print(), 120);
   }
 
@@ -45,7 +45,7 @@ export function ReportsPanel({ patients, professionalName, professionalRegister,
         <Card>
           <CardHeader>
             <CardTitle>Resumo mensal</CardTitle>
-            <CardDescription>Sessoes realizadas e entrada de novos pacientes.</CardDescription>
+            <CardDescription>Sessões realizadas e entrada de novos pacientes.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-72">
@@ -55,7 +55,7 @@ export function ReportsPanel({ patients, professionalName, professionalRegister,
                   <XAxis dataKey="month" />
                   <YAxis />
                   <Tooltip />
-                  <Bar dataKey="sessoes" name="Sessoes" fill="#245B68" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="sessoes" name="Sessões" fill="#245B68" radius={[6, 6, 0, 0]} />
                   <Bar dataKey="novos" name="Novos pacientes" fill="#5F9E8C" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -66,7 +66,7 @@ export function ReportsPanel({ patients, professionalName, professionalRegister,
         <Card>
           <CardHeader>
             <CardTitle>Status de agendamentos</CardTitle>
-            <CardDescription>Distribuicao dos atendimentos do mes.</CardDescription>
+            <CardDescription>Distribuição dos atendimentos do mês.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-72">
@@ -94,12 +94,12 @@ export function ReportsPanel({ patients, professionalName, professionalRegister,
       <Card>
         <CardHeader>
           <CardTitle>Documentos para PDF</CardTitle>
-          <CardDescription>Imprima prontuarios e resumos em uma folha com cabecalho, logo e marca d&apos;agua.</CardDescription>
+          <CardDescription>Imprima prontuários e resumos em uma folha com cabeçalho, logo e marca d&apos;água.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {["Prontuario completo", "Resumo clinico", "Relatorio financeiro", "Historico de presenca"].map((item) => (
+          {["Prontuário completo", "Resumo clínico", "Relatório financeiro", "Histórico de presença"].map((item) => (
             <Button key={item} type="button" variant="outline" className="justify-start" onClick={() => printReport(item)}>
-              {item.includes("Prontuario") ? <Printer className="h-4 w-4" /> : <FileDown className="h-4 w-4" />}
+              {item.includes("Prontuário") ? <Printer className="h-4 w-4" /> : <FileDown className="h-4 w-4" />}
               {item}
             </Button>
           ))}
@@ -109,8 +109,8 @@ export function ReportsPanel({ patients, professionalName, professionalRegister,
       <section className="print-sheet rounded-lg border border-border bg-white p-8 shadow-soft">
         <div className="watermark">Nexopsi</div>
         <ProfessionalPrintHeader
-          title="Prontuario e resumo do paciente"
-          subtitle="Documento clinico para impressao em PDF"
+          title="Prontuário e resumo do paciente"
+          subtitle="Documento clínico para impressão em PDF"
           professionalName={professionalName}
           professionalRegister={professionalRegister}
           professionalEmail={professionalEmail}
@@ -120,9 +120,9 @@ export function ReportsPanel({ patients, professionalName, professionalRegister,
           <Info title="Paciente" value={featuredPatient?.name ?? "Paciente a definir"} />
           <Info title="Contato" value={featuredPatient?.phone ?? "-"} />
           <Info title="E-mail" value={featuredPatient?.email ?? "-"} />
-          <Info title="Endereco" value={featuredPatient?.address ?? "-"} />
+          <Info title="Endereço" value={featuredPatient?.address ?? "-"} />
           <Info title="Queixa principal" value={featuredPatient?.mainComplaint ?? "Sem paciente cadastrado para este relatorio."} />
-          <Info title="Ultima evolucao" value="Sem evolucao registrada." />
+          <Info title="Última evolução" value="Sem evolução registrada." />
         </div>
         <footer className="mt-8 border-t border-border pt-5 text-sm text-ink-muted">
           Assinatura profissional: {professionalName} - {professionalRegister}

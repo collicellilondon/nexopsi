@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 type DocumentStatus = "rascunho" | "pronto" | "assinado" | "enviado" | "vencendo";
-type DocumentKind = "Prontuario" | "Contrato" | "Atestado" | "Declaracao" | "Recibo" | "Encaminhamento" | "Consentimento";
+type DocumentKind = "Prontuário" | "Contrato" | "Atestado" | "Declaração" | "Recibo" | "Encaminhamento" | "Consentimento";
 
 type ClinicalDocument = {
   id: string;
@@ -35,12 +35,12 @@ type Template = {
 };
 
 const templates: Template[] = [
-  { title: "Evolucao clinica", kind: "Prontuario", icon: FileText, description: "Registro de sessao com evolucao, intervencoes, tarefa e plano.", content: "Registro de evolucao clinica com foco da sessao, resposta do paciente, intervencoes realizadas e plano para continuidade." },
-  { title: "Contrato terapeutico", kind: "Contrato", icon: FileSignature, description: "Combinados de atendimento, faltas, sigilo, pagamentos e canais.", content: "Contrato terapeutico com regras de atendimento, politica de remarcacao, valores, sigilo profissional e consentimento." },
-  { title: "Termo de consentimento LGPD", kind: "Consentimento", icon: ShieldCheck, description: "Autorizacao de tratamento de dados sensiveis e prontuario.", content: "Termo de consentimento para tratamento de dados pessoais e sensiveis, guarda de prontuario e comunicacao com paciente." },
-  { title: "Atestado psicologico", kind: "Atestado", icon: ClipboardCheck, description: "Modelo de atestado com cabecalho, CRP, finalidade e assinatura.", content: "Atesto, para os devidos fins, que o paciente esteve em atendimento psicologico na data informada." },
-  { title: "Declaracao de comparecimento", kind: "Declaracao", icon: FileCheck2, description: "Declaracao simples de presenca para paciente ou responsavel.", content: "Declaramos que o paciente compareceu ao atendimento psicologico no horario informado." },
-  { title: "Encaminhamento", kind: "Encaminhamento", icon: Mail, description: "Documento para encaminhar paciente a outro profissional.", content: "Encaminhamento clinico com motivo, historico resumido e sugestao de avaliacao complementar." }
+  { title: "Evolução clínica", kind: "Prontuário", icon: FileText, description: "Registro de sessão com evolução, intervenções, tarefa e plano.", content: "Registro de evolução clínica com foco da sessão, resposta do paciente, intervenções realizadas e plano para continuidade." },
+  { title: "Contrato terapêutico", kind: "Contrato", icon: FileSignature, description: "Combinados de atendimento, faltas, sigilo, pagamentos e canais.", content: "Contrato terapêutico com regras de atendimento, política de remarcação, valores, sigilo profissional e consentimento." },
+  { title: "Termo de consentimento LGPD", kind: "Consentimento", icon: ShieldCheck, description: "Autorização de tratamento de dados sensíveis e prontuário.", content: "Termo de consentimento para tratamento de dados pessoais e sensíveis, guarda de prontuário e comunicação com paciente." },
+  { title: "Atestado psicológico", kind: "Atestado", icon: ClipboardCheck, description: "Modelo de atestado com cabeçalho, CRP, finalidade e assinatura.", content: "Atesto, para os devidos fins, que o paciente esteve em atendimento psicológico na data informada." },
+  { title: "Declaração de comparecimento", kind: "Declaração", icon: FileCheck2, description: "Declaração simples de presença para paciente ou responsável.", content: "Declaramos que o paciente compareceu ao atendimento psicológico no horário informado." },
+  { title: "Encaminhamento", kind: "Encaminhamento", icon: Mail, description: "Documento para encaminhar paciente a outro profissional.", content: "Encaminhamento clínico com motivo, histórico resumido e sugestão de avaliação complementar." }
 ];
 
 const initialDocuments: ClinicalDocument[] = [];
@@ -118,14 +118,14 @@ export function DocumentCenter({ professionalName, professionalRegister, profess
 
   function printSelected() {
     if (!selected) return;
-    onNotify(`${selected.title} preparado para impressao em PDF.`);
+    onNotify(`${selected.title} preparado para impressão em PDF.`);
     setTimeout(() => window.print(), 120);
   }
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-3">
-        <Metric icon={FileText} label="Documentos" value={documents.length.toString()} helper="Modelos e arquivos clinicos" />
+        <Metric icon={FileText} label="Documentos" value={documents.length.toString()} helper="Modelos e arquivos clínicos" />
         <Metric icon={CheckCircle2} label="Prontos" value={readyCount.toString()} helper="Assinados, enviados ou finalizados" tone="success" />
         <Metric icon={FileClock} label="Pendentes" value={pendingCount.toString()} helper="Rascunhos e termos vencendo" tone="warning" />
       </div>
@@ -134,13 +134,13 @@ export function DocumentCenter({ professionalName, professionalRegister, profess
         <Card>
           <CardHeader>
             <CardTitle>Central de documentos</CardTitle>
-            <CardDescription>Crie, revise, assine, imprima e acompanhe documentos clinicos.</CardDescription>
+            <CardDescription>Crie, revise, assine, imprima e acompanhe documentos clínicos.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 md:grid-cols-[1fr_auto]">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
-                <Input className="pl-9" placeholder="Buscar por paciente, tipo, tag ou conteudo" value={query} onChange={(event) => setQuery(event.target.value)} />
+                <Input className="pl-9" placeholder="Buscar por paciente, tipo, tag ou conteúdo" value={query} onChange={(event) => setQuery(event.target.value)} />
               </div>
               <select className="h-10 rounded-md border border-border bg-white px-3 text-sm font-semibold text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" value={kindFilter} onChange={(event) => setKindFilter(event.target.value as "todos" | DocumentKind)}>
                 <option value="todos">Todos os tipos</option>
@@ -163,7 +163,7 @@ export function DocumentCenter({ professionalName, professionalRegister, profess
               ))}
               {visibleDocuments.length === 0 ? (
                 <div className="rounded-md border border-border bg-background p-4 text-sm font-semibold text-ink-muted">
-                  Nenhum documento cadastrado. Escolha um modelo rapido para criar o primeiro rascunho.
+                  Nenhum documento cadastrado. Escolha um modelo rápido para criar o primeiro rascunho.
                 </div>
               ) : null}
             </div>
@@ -185,18 +185,18 @@ export function DocumentCenter({ professionalName, professionalRegister, profess
               <CardContent className="space-y-4">
                 <div className="grid gap-3 md:grid-cols-2">
                   <Info icon={FileText} label="Tipo" value={selected.kind} />
-                  <Info icon={LockKeyhole} label="Responsavel" value={professionalName} />
-                  <Info icon={ShieldCheck} label="Seguranca" value="Documento clinico confidencial" />
+                  <Info icon={LockKeyhole} label="Responsável" value={professionalName} />
+                  <Info icon={ShieldCheck} label="Segurança" value="Documento clínico confidencial" />
                   <Info icon={FileClock} label="Vencimento" value={selected.expiresAt ? formatDate(selected.expiresAt) : "Sem vencimento"} />
                 </div>
                 <label className="text-sm font-black text-ink">
-                  Conteudo do documento
+                  Conteúdo do documento
                   <textarea className="mt-2 min-h-40 w-full rounded-md border border-border bg-white p-3 text-sm font-medium text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" value={selected.content} onChange={(event) => updateSelected({ content: event.target.value, status: "rascunho" }, "Documento atualizado e salvo como rascunho.")} />
                 </label>
                 <div className="flex flex-wrap gap-2">{selected.tags.map((tag) => <Badge key={tag} variant="secondary">{tag}</Badge>)}</div>
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <Button type="button" onClick={() => updateSelected({ status: "pronto" }, "Documento marcado como pronto.")}><CheckCircle2 className="h-4 w-4" />Aprovar</Button>
-                  <Button type="button" variant="outline" onClick={() => updateSelected({ status: "assinado", owner: professionalName }, "Documento assinado digitalmente na previa.")}><PenLine className="h-4 w-4" />Assinar</Button>
+                  <Button type="button" variant="outline" onClick={() => updateSelected({ status: "assinado", owner: professionalName }, "Documento assinado digitalmente na prévia.")}><PenLine className="h-4 w-4" />Assinar</Button>
                   <Button type="button" variant="outline" onClick={() => updateSelected({ status: "enviado" }, "Documento enviado ao paciente em modo teste.")}><Mail className="h-4 w-4" />Enviar</Button>
                   <Button type="button" variant="outline" onClick={printSelected}><Printer className="h-4 w-4" />PDF</Button>
                 </div>
@@ -206,14 +206,14 @@ export function DocumentCenter({ professionalName, professionalRegister, profess
             <Card>
               <CardHeader>
                 <CardTitle>Nenhum documento selecionado</CardTitle>
-                <CardDescription>Use os modelos rapidos abaixo para gerar documentos padronizados com logo, cabecalho e assinatura.</CardDescription>
+                <CardDescription>Use os modelos rápidos abaixo para gerar documentos padronizados com logo, cabeçalho e assinatura.</CardDescription>
               </CardHeader>
             </Card>
           )}
 
           <Card>
             <CardHeader>
-              <CardTitle>Modelos rapidos</CardTitle>
+            <CardTitle>Modelos rápidos</CardTitle>
               <CardDescription>Escolha um modelo para gerar um novo rascunho.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 md:grid-cols-2">
@@ -237,13 +237,13 @@ export function DocumentCenter({ professionalName, professionalRegister, profess
       {selected ? (
         <section className="print-sheet rounded-lg border border-border bg-white p-8 shadow-soft">
           <div className="watermark">Nexopsi</div>
-          <ProfessionalPrintHeader title={selected.title} subtitle="Documento clinico confidencial" professionalName={professionalName} professionalRegister={professionalRegister} professionalEmail={professionalEmail} professionalPhone={professionalPhone} />
+          <ProfessionalPrintHeader title={selected.title} subtitle="Documento clínico confidencial" professionalName={professionalName} professionalRegister={professionalRegister} professionalEmail={professionalEmail} professionalPhone={professionalPhone} />
           <div className="mt-6 grid gap-5 md:grid-cols-2">
             <InfoBlock title="Paciente" value={selected.patient} />
             <InfoBlock title="Tipo" value={selected.kind} />
             <InfoBlock title="Status" value={statusLabel[selected.status]} />
-            <InfoBlock title="Responsavel" value={professionalName} />
-            <div className="md:col-span-2"><InfoBlock title="Conteudo" value={selected.content} /></div>
+            <InfoBlock title="Responsável" value={professionalName} />
+            <div className="md:col-span-2"><InfoBlock title="Conteúdo" value={selected.content} /></div>
           </div>
           <footer className="mt-8 border-t border-border pt-5 text-sm text-ink-muted">Assinatura: {professionalName} - {professionalRegister}</footer>
         </section>

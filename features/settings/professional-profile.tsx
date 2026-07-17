@@ -50,7 +50,7 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave }: Profes
       const photoUrl = String(reader.result);
       setProfile((current) => ({ ...current, photoUrl }));
       setSaved(false);
-      onNotify("Foto carregada. Clique em Salvar cadastro para aplicar no cabecalho.");
+      onNotify("Foto carregada. Clique em Salvar cadastro para aplicar no cabeçalho.");
     };
     reader.readAsDataURL(file);
   }
@@ -58,8 +58,8 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave }: Profes
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Cadastro da psicologa</CardTitle>
-        <CardDescription>Informacoes usadas em documentos, recibos, prontuarios e relatorios.</CardDescription>
+        <CardTitle>Cadastro da psicóloga</CardTitle>
+        <CardDescription>Informações usadas em documentos, recibos, prontuários e relatórios.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <div className="rounded-lg border border-border bg-background p-5 text-center">
@@ -77,7 +77,7 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave }: Profes
             <Camera className="h-4 w-4" />
             Alterar foto
           </Button>
-          <p className="mt-3 text-sm text-ink-muted">Foto profissional de {profile.name} para cabecalhos e documentos.</p>
+          <p className="mt-3 text-sm text-ink-muted">Foto profissional de {profile.name} para cabeçalhos e documentos.</p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -94,7 +94,7 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave }: Profes
           {saved ? (
             <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm font-bold text-green-700 md:col-span-2">
               <CheckCircle2 className="h-4 w-4" />
-              Cadastro salvo. O cabecalho ja foi atualizado com {profile.name}.
+              Cadastro salvo. O cabeçalho já foi atualizado com {profile.name}.
             </div>
           ) : null}
           <div className="flex justify-end md:col-span-2">

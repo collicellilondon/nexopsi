@@ -28,11 +28,11 @@ export function InteractiveHome() {
     register: "CRP 06/123456",
     email: "tatiane@nexopsi.com",
     phone: "(11) 99999-0000",
-    specialty: "Psicologia clinica",
-    bio: "Atendimento adulto com foco em ansiedade, organizacao emocional e qualidade de vida.",
+    specialty: "Psicologia clínica",
+    bio: "Atendimento adulto com foco em ansiedade, organização emocional e qualidade de vida.",
     photoUrl: ""
   });
-  const [message, setMessage] = useState("Ambiente limpo para apresentacao: cadastre pacientes, sessoes e documentos para testar o fluxo.");
+  const [message, setMessage] = useState("Ambiente limpo para apresentação: cadastre pacientes, sessões e documentos para testar o fluxo.");
   const allPatients = useMemo(() => dedupePatients([...patients, ...initialPatients]), [patients]);
   const patientSuggestions = useMemo<SearchSuggestion[]>(
     () =>
@@ -68,7 +68,7 @@ export function InteractiveHome() {
     setActiveView("agenda");
     setGlobalFilter("");
     setSessionSeed((value) => value + 1);
-    notify("Sessao de teste adicionada na agenda.");
+    notify("Sessão de teste adicionada na agenda.");
   }
 
   function openDocuments() {
@@ -112,7 +112,7 @@ export function InteractiveHome() {
     if (includesAny(normalized, ["sessao", "sessões", "sessoes", "evolucao", "tarefa", "intervencao", "falta", "presenca"])) {
       setActiveView("sessoes");
       setGlobalFilter(query);
-      notify(`Busca aberta em Sessoes por "${query}".`);
+      notify(`Busca aberta em Sessões por "${query}".`);
       return;
     }
 
@@ -133,20 +133,20 @@ export function InteractiveHome() {
     if (includesAny(normalized, ["relatorio", "grafico", "imprimir", "resumo"])) {
       setActiveView("relatorios");
       setGlobalFilter("");
-      notify(`Relatorios abertos para "${query}".`);
+      notify(`Relatórios abertos para "${query}".`);
       return;
     }
 
     if (includesAny(normalized, ["configuracao", "config", "tema", "psicologa", "cadastro", "foto", "logo", "crp", "registro"])) {
       setActiveView("configuracoes");
       setGlobalFilter("");
-      notify(`Configuracoes abertas para "${query}".`);
+      notify(`Configurações abertas para "${query}".`);
       return;
     }
 
     setActiveView("inicio");
     setGlobalFilter("");
-    notify(`Nao encontrei resultado direto para "${query}". Tente paciente, documento, sessao, financeiro ou configuracoes.`);
+    notify(`Não encontrei resultado direto para "${query}". Tente paciente, documento, sessão, financeiro ou configurações.`);
   }
 
   function renderActiveView() {
@@ -159,7 +159,7 @@ export function InteractiveHome() {
         <>
           <SectionHeading
             title="Pacientes"
-            description="Cadastro completo, busca instantanea, filtros, ficha clinica e saldos em uma visao operacional."
+            description="Cadastro completo, busca instantânea, filtros, ficha clínica e saldos em uma visão operacional."
             action="Novo paciente"
             icon={<Users className="h-4 w-4" />}
             onAction={createPatient}
@@ -174,8 +174,8 @@ export function InteractiveHome() {
         <>
           <SectionHeading
             title="Agenda"
-            description="Visualizacoes por dia, semana, mes e lista, com cores por status do agendamento."
-            action="Nova sessao"
+            description="Visualizações por dia, semana, mês e lista, com cores por status do agendamento."
+            action="Nova sessão"
             icon={<Plus className="h-4 w-4" />}
             onAction={createSession}
           />
@@ -188,9 +188,9 @@ export function InteractiveHome() {
       return (
         <>
           <SectionHeading
-            title="Sessoes"
-            description="Evolucao clinica, presenca, tarefas terapeuticas, pagamentos, documentos e resumo de atendimento."
-            action="Nova sessao"
+            title="Sessões"
+            description="Evolução clínica, presença, tarefas terapêuticas, pagamentos, documentos e resumo de atendimento."
+            action="Nova sessão"
             icon={<Stethoscope className="h-4 w-4" />}
             onAction={createSession}
           />
@@ -204,10 +204,10 @@ export function InteractiveHome() {
         <>
           <SectionHeading
             title="Financeiro"
-            description="Faturas, mensalidades, adimplencia, inadimplencia, cobrancas, recibos e previsibilidade de caixa."
+            description="Faturas, mensalidades, adimplência, inadimplência, cobranças, recibos e previsibilidade de caixa."
             action="Nova fatura"
             icon={<WalletCards className="h-4 w-4" />}
-            onAction={() => notify("Use o botao Nova fatura dentro do financeiro.")}
+            onAction={() => notify("Use o botão Nova fatura dentro do financeiro.")}
           />
           <FinancePanel searchQuery={activeView === "financeiro" ? globalFilter : ""} onNotify={notify} />
         </>
@@ -219,7 +219,7 @@ export function InteractiveHome() {
         <>
           <SectionHeading
             title="Documentos"
-            description="Modelos clinicos, prontuarios, contratos, termos, atestados, assinaturas, envio e impressao em PDF."
+            description="Modelos clínicos, prontuários, contratos, termos, atestados, assinaturas, envio e impressão em PDF."
             action="Novo documento"
             icon={<FileText className="h-4 w-4" />}
             onAction={openDocuments}
@@ -240,9 +240,9 @@ export function InteractiveHome() {
       return (
         <>
           <SectionHeading
-            title="Relatorios"
-            description="Graficos de desempenho, status da agenda e impressao de prontuarios e resumos em PDF."
-            action="Imprimir prontuario"
+            title="Relatórios"
+            description="Gráficos de desempenho, status da agenda e impressão de prontuários e resumos em PDF."
+            action="Imprimir prontuário"
             icon={<Plus className="h-4 w-4" />}
             onAction={() => window.print()}
           />
@@ -261,11 +261,11 @@ export function InteractiveHome() {
     return (
       <>
         <SectionHeading
-          title="Configuracoes"
-          description="Temas visuais da plataforma, preferencias da clinica e personalizacao da experiencia."
-          action="Tema padrao"
+          title="Configurações"
+          description="Temas visuais da plataforma, preferências da clínica e personalização da experiência."
+          action="Tema padrão"
           icon={<Settings className="h-4 w-4" />}
-          onAction={() => notify("Tema padrao Nexopsi selecionado.")}
+          onAction={() => notify("Tema padrão Nexopsi selecionado.")}
         />
         <ThemeSettings onNotify={notify} />
         <div className="mt-6">

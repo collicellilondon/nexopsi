@@ -38,14 +38,14 @@ export function Dashboard({ professionalName, onCreatePatient, onCreateSession, 
 
   const quickActions = [
     { label: "Criar paciente", icon: UserPlus, action: onCreatePatient },
-    { label: "Agendar sessao", icon: CalendarPlus, action: onCreateSession },
+    { label: "Agendar sessão", icon: CalendarPlus, action: onCreateSession },
     { label: "Registrar pagamento", icon: Receipt, action: () => onNotify("Pagamento registrado como pago.") },
     { label: "Gerar documento", icon: FilePlus2, action: onOpenDocuments }
   ];
 
   function resolvePending(item: string) {
     setPendingItems((current) => current.filter((pending) => pending !== item));
-    onNotify(`Pendencia revisada: ${item}`);
+    onNotify(`Pendência revisada: ${item}`);
   }
 
   return (
@@ -53,15 +53,15 @@ export function Dashboard({ professionalName, onCreatePatient, onCreateSession, 
       <div className="flex flex-col gap-4 rounded-lg bg-primary px-5 py-6 text-white shadow-soft md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-sm font-semibold text-white/75">Sexta-feira, 17 de julho de 2026</p>
-          <h1 className="mt-2 text-2xl font-black md:text-3xl">Bom dia, {getFirstName(professionalName)}. Sua clinica esta organizada para hoje.</h1>
+          <h1 className="mt-2 text-2xl font-black md:text-3xl">Bom dia, {getFirstName(professionalName)}. Sua clínica está organizada para hoje.</h1>
           <p className="mt-2 max-w-3xl text-sm text-white/78">
-            Visao executiva da agenda, prontuarios, pacientes e pendencias clinicas para conduzir o dia com seguranca.
+            Visão executiva da agenda, prontuários, pacientes e pendências clínicas para conduzir o dia com segurança.
           </p>
         </div>
         <button type="button" onClick={onCreateSession} className="rounded-md bg-white/12 p-4 text-left transition hover:bg-white/20">
-          <p className="text-sm text-white/75">Proxima sessao</p>
+          <p className="text-sm text-white/75">Próxima sessão</p>
           <p className="mt-1 text-xl font-black">Nenhuma hoje</p>
-          <p className="text-sm text-white/75">Clique para criar a primeira sessao</p>
+          <p className="text-sm text-white/75">Clique para criar a primeira sessão</p>
         </button>
       </div>
 
@@ -87,26 +87,26 @@ export function Dashboard({ professionalName, onCreatePatient, onCreateSession, 
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Saude operacional da clinica</CardTitle>
-            <CardDescription>Resumo profissional dos pontos de atencao para hoje.</CardDescription>
+            <CardTitle>Saúde operacional da clínica</CardTitle>
+            <CardDescription>Resumo profissional dos pontos de atenção para hoje.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
-            <OperationalItem icon={CheckCircle2} title="Agenda configurada" value="0" description="Sessoes cadastradas para acompanhamento." tone="success" />
-            <OperationalItem icon={ShieldCheck} title="Prontuarios ativos" value="0" description="Registros clinicos vinculados a pacientes." tone="primary" />
-            <OperationalItem icon={CalendarPlus} title="Retornos a confirmar" value="0" description="Pacientes com proxima sessao ainda sem confirmacao." tone="warning" />
-            <OperationalItem icon={ClipboardCheck} title="Documentos pendentes" value="0" description="Termos, relatorios ou evolucoes aguardando revisao." tone="danger" />
+            <OperationalItem icon={CheckCircle2} title="Agenda configurada" value="0" description="Sessões cadastradas para acompanhamento." tone="success" />
+            <OperationalItem icon={ShieldCheck} title="Prontuários ativos" value="0" description="Registros clínicos vinculados a pacientes." tone="primary" />
+            <OperationalItem icon={CalendarPlus} title="Retornos a confirmar" value="0" description="Pacientes com próxima sessão ainda sem confirmação." tone="warning" />
+            <OperationalItem icon={ClipboardCheck} title="Documentos pendentes" value="0" description="Termos, relatórios ou evoluções aguardando revisão." tone="danger" />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Pendencias clinicas</CardTitle>
-            <CardDescription>Clique em uma pendencia para marcar como revisada.</CardDescription>
+            <CardTitle>Pendências clínicas</CardTitle>
+            <CardDescription>Clique em uma pendência para marcar como revisada.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {pendingItems.length === 0 ? (
               <div className="rounded-md border border-border bg-background p-4 text-sm font-semibold text-success">
-                Nenhuma pendencia clinica cadastrada.
+                Nenhuma pendência clínica cadastrada.
               </div>
             ) : null}
             {pendingItems.map((item, index) => (
@@ -122,8 +122,8 @@ export function Dashboard({ professionalName, onCreatePatient, onCreateSession, 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Acoes rapidas</CardTitle>
-            <CardDescription>Atalhos funcionais para tarefas recorrentes da clinica.</CardDescription>
+            <CardTitle>Ações rápidas</CardTitle>
+            <CardDescription>Atalhos funcionais para tarefas recorrentes da clínica.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
             {quickActions.map((action) => (
@@ -138,7 +138,7 @@ export function Dashboard({ professionalName, onCreatePatient, onCreateSession, 
         <Card>
           <CardHeader>
             <CardTitle>Agenda de hoje</CardTitle>
-            <CardDescription>Clique em uma sessao para abrir a agenda.</CardDescription>
+            <CardDescription>Clique em uma sessão para abrir a agenda.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {appointments.slice(0, 3).map((appointment) => (
@@ -154,7 +154,7 @@ export function Dashboard({ professionalName, onCreatePatient, onCreateSession, 
             ))}
             {appointments.length === 0 ? (
               <div className="rounded-md border border-border bg-background p-4 text-sm font-semibold text-ink-muted">
-                Nenhuma sessao agendada para hoje. Use Nova sessao para comecar.
+                Nenhuma sessão agendada para hoje. Use Nova sessão para começar.
               </div>
             ) : null}
           </CardContent>

@@ -99,17 +99,17 @@ export function SessionManagement({ createdCount, searchQuery = "", onNotify }: 
       status: "agendada",
       payment: "pendente",
       value: 320,
-      focus: "Sessao inicial",
-      evolution: "Campo de evolucao pronto para preenchimento apos o atendimento.",
-      intervention: "Definir tecnica utilizada na sessao.",
-      task: "Adicionar tarefa terapeutica para casa.",
-      nextPlan: "Planejar objetivo da proxima sessao.",
+      focus: "Sessão inicial",
+      evolution: "Campo de evolução pronto para preenchimento após o atendimento.",
+      intervention: "Definir técnica utilizada na sessão.",
+      task: "Adicionar tarefa terapêutica para casa.",
+      nextPlan: "Planejar objetivo da próxima sessão.",
       risk: "baixo",
-      documents: ["Evolucao"]
+      documents: ["Evolução"]
     };
     setSessions((current) => [session, ...current]);
     setSelectedId(session.id);
-    onNotify("Nova sessao criada com checklist clinico completo.");
+    onNotify("Nova sessão criada com checklist clínico completo.");
   }
 
   function updateSelected(patch: Partial<ClinicalSession>, message: string) {
@@ -121,10 +121,10 @@ export function SessionManagement({ createdCount, searchQuery = "", onNotify }: 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Metric icon={CalendarClock} label="Sessoes planejadas" value={sessions.length.toString()} helper="Agenda clinica ativa" />
-        <Metric icon={CheckCircle2} label="Evolucoes prontas" value={completed.toString()} helper="Registros finalizados" />
-        <Metric icon={ClipboardList} label="Pendencias clinicas" value={pendingEvolution.toString()} helper="Precisam de revisao" tone="warning" />
-        <Metric icon={Receipt} label="Pagamentos abertos" value={openPayments.toString()} helper="Vinculados a sessoes" tone="danger" />
+        <Metric icon={CalendarClock} label="Sessões planejadas" value={sessions.length.toString()} helper="Agenda clínica ativa" />
+        <Metric icon={CheckCircle2} label="Evoluções prontas" value={completed.toString()} helper="Registros finalizados" />
+        <Metric icon={ClipboardList} label="Pendências clínicas" value={pendingEvolution.toString()} helper="Precisam de revisão" tone="warning" />
+        <Metric icon={Receipt} label="Pagamentos abertos" value={openPayments.toString()} helper="Vinculados a sessões" tone="danger" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
@@ -132,12 +132,12 @@ export function SessionManagement({ createdCount, searchQuery = "", onNotify }: 
           <CardHeader>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <CardTitle>Gestao de sessoes</CardTitle>
-                <CardDescription>Agenda clinica, evolucao, presenca, pagamento, tarefas e documentos.</CardDescription>
+                <CardTitle>Gestão de sessões</CardTitle>
+                <CardDescription>Agenda clínica, evolução, presença, pagamento, tarefas e documentos.</CardDescription>
               </div>
               <Button type="button" onClick={createSession}>
                 <CalendarClock className="h-4 w-4" />
-                Nova sessao
+                Nova sessão
               </Button>
             </div>
           </CardHeader>
@@ -145,7 +145,7 @@ export function SessionManagement({ createdCount, searchQuery = "", onNotify }: 
             <div className="grid gap-3 md:grid-cols-[1fr_auto]">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
-                <Input className="pl-9" placeholder="Buscar por paciente, foco, evolucao ou tarefa" value={query} onChange={(event) => setQuery(event.target.value)} />
+                <Input className="pl-9" placeholder="Buscar por paciente, foco, evolução ou tarefa" value={query} onChange={(event) => setQuery(event.target.value)} />
               </div>
               <select className="h-10 rounded-md border border-border bg-white px-3 text-sm font-semibold text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "todas" | SessionStatus)}>
                 <option value="todas">Todos os status</option>
@@ -178,7 +178,7 @@ export function SessionManagement({ createdCount, searchQuery = "", onNotify }: 
               ))}
               {visibleSessions.length === 0 ? (
                 <div className="rounded-md border border-border bg-background p-4 text-sm font-semibold text-ink-muted">
-                  Nenhuma sessao cadastrada. Clique em Nova sessao para testar o fluxo clinico.
+                  Nenhuma sessão cadastrada. Clique em Nova sessão para testar o fluxo clínico.
                 </div>
               ) : null}
             </div>
@@ -190,13 +190,13 @@ export function SessionManagement({ createdCount, searchQuery = "", onNotify }: 
         ) : (
           <Card>
             <CardHeader>
-              <CardTitle>Nenhuma sessao selecionada</CardTitle>
-              <CardDescription>Crie a primeira sessao para liberar evolucao, pagamento, tarefas e documentos.</CardDescription>
+              <CardTitle>Nenhuma sessão selecionada</CardTitle>
+              <CardDescription>Crie a primeira sessão para liberar evolução, pagamento, tarefas e documentos.</CardDescription>
             </CardHeader>
             <CardContent>
               <Button type="button" onClick={createSession}>
                 <CalendarClock className="h-4 w-4" />
-                Criar primeira sessao
+                Criar primeira sessão
               </Button>
             </CardContent>
           </Card>
@@ -223,26 +223,26 @@ function SessionDetail({ selected, updateSelected, onNotify }: { selected: Clini
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="grid gap-3 sm:grid-cols-2">
-          <InfoTile icon={Sparkles} label="Foco da sessao" value={selected.focus} />
-          <InfoTile icon={ShieldCheck} label="Risco clinico" value={selected.risk} />
+          <InfoTile icon={Sparkles} label="Foco da sessão" value={selected.focus} />
+          <InfoTile icon={ShieldCheck} label="Risco clínico" value={selected.risk} />
           <InfoTile icon={Receipt} label="Valor" value={selected.value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} />
           <InfoTile icon={selected.mode === "online" ? Video : UserCheck} label="Formato" value={selected.mode} />
         </div>
 
         <div className="grid gap-4">
-          <TextBlock title="Evolucao clinica" value={selected.evolution} onChange={(value) => updateSelected({ evolution: value }, "Evolucao clinica atualizada.")} />
-          <TextBlock title="Intervencoes e tecnicas" value={selected.intervention} onChange={(value) => updateSelected({ intervention: value }, "Intervencoes da sessao atualizadas.")} />
-          <TextBlock title="Tarefa terapeutica" value={selected.task} onChange={(value) => updateSelected({ task: value }, "Tarefa terapeutica atualizada.")} />
-          <TextBlock title="Plano para proxima sessao" value={selected.nextPlan} onChange={(value) => updateSelected({ nextPlan: value }, "Plano da proxima sessao atualizado.")} />
+          <TextBlock title="Evolução clínica" value={selected.evolution} onChange={(value) => updateSelected({ evolution: value }, "Evolução clínica atualizada.")} />
+          <TextBlock title="Intervenções e técnicas" value={selected.intervention} onChange={(value) => updateSelected({ intervention: value }, "Intervenções da sessão atualizadas.")} />
+          <TextBlock title="Tarefa terapêutica" value={selected.task} onChange={(value) => updateSelected({ task: value }, "Tarefa terapêutica atualizada.")} />
+          <TextBlock title="Plano para próxima sessão" value={selected.nextPlan} onChange={(value) => updateSelected({ nextPlan: value }, "Plano da próxima sessão atualizado.")} />
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <Button type="button" onClick={() => updateSelected({ status: "realizada" }, "Sessao marcada como realizada e evolucao salva.")}><CheckCircle2 className="h-4 w-4" />Finalizar sessao</Button>
-          <Button type="button" variant="outline" onClick={() => updateSelected({ payment: "pago" }, "Pagamento da sessao marcado como pago.")}><Receipt className="h-4 w-4" />Dar baixa</Button>
-          <Button type="button" variant="outline" onClick={() => onNotify("Resumo clinico preparado para impressao/PDF.")}><Printer className="h-4 w-4" />Imprimir resumo</Button>
+          <Button type="button" onClick={() => updateSelected({ status: "realizada" }, "Sessão marcada como realizada e evolução salva.")}><CheckCircle2 className="h-4 w-4" />Finalizar sessão</Button>
+          <Button type="button" variant="outline" onClick={() => updateSelected({ payment: "pago" }, "Pagamento da sessão marcado como pago.")}><Receipt className="h-4 w-4" />Dar baixa</Button>
+          <Button type="button" variant="outline" onClick={() => onNotify("Resumo clínico preparado para impressão/PDF.")}><Printer className="h-4 w-4" />Imprimir resumo</Button>
           <Button type="button" variant="outline" onClick={() => onNotify("Mensagem de lembrete enviada ao paciente.")}><MessageSquareText className="h-4 w-4" />Lembrete</Button>
-          <Button type="button" variant="outline" onClick={() => onNotify("Documento de evolucao gerado para esta sessao.")}><FileText className="h-4 w-4" />Gerar evolucao</Button>
-          <Button type="button" variant="outline" onClick={() => updateSelected({ status: "faltou" }, "Falta registrada e cobranca sinalizada.")}><ClipboardList className="h-4 w-4" />Registrar falta</Button>
+          <Button type="button" variant="outline" onClick={() => onNotify("Documento de evolução gerado para esta sessão.")}><FileText className="h-4 w-4" />Gerar evolução</Button>
+          <Button type="button" variant="outline" onClick={() => updateSelected({ status: "faltou" }, "Falta registrada e cobrança sinalizada.")}><ClipboardList className="h-4 w-4" />Registrar falta</Button>
         </div>
 
         <div className="rounded-md border border-border bg-background p-4">

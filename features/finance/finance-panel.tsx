@@ -77,7 +77,7 @@ export function FinancePanel({ searchQuery = "", onNotify }: { searchQuery?: str
     const invoice: Invoice = {
       id: `fat-${Date.now()}`,
       patient: "Paciente a definir",
-      description: "Mensalidade terapeutica - 4 sessoes",
+      description: "Mensalidade terapêutica - 4 sessões",
       dueDate: "2026-08-05",
       amount: 1280,
       status: "pendente",
@@ -99,7 +99,7 @@ export function FinancePanel({ searchQuery = "", onNotify }: { searchQuery?: str
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Receita e inadimplencia</CardTitle>
+            <CardTitle>Receita e inadimplência</CardTitle>
             <CardDescription>Controle mensal de recebimentos, atrasos e previsibilidade.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -120,8 +120,8 @@ export function FinancePanel({ searchQuery = "", onNotify }: { searchQuery?: str
 
         <Card>
           <CardHeader>
-            <CardTitle>Adimplencia</CardTitle>
-            <CardDescription>Distribuicao atual das faturas.</CardDescription>
+            <CardTitle>Adimplência</CardTitle>
+            <CardDescription>Distribuição atual das faturas.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-72">
@@ -142,7 +142,7 @@ export function FinancePanel({ searchQuery = "", onNotify }: { searchQuery?: str
         <CardHeader>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <CardTitle>Faturas, mensalidades e cobrancas</CardTitle>
+              <CardTitle>Faturas, mensalidades e cobranças</CardTitle>
               <CardDescription>Gerencie pagamentos, inadimplentes, recibos e lembretes.</CardDescription>
             </div>
             <Button type="button" onClick={createInvoice}>
@@ -169,11 +169,11 @@ export function FinancePanel({ searchQuery = "", onNotify }: { searchQuery?: str
           <div className="overflow-hidden rounded-lg border border-border">
             <div className="hidden grid-cols-[1fr_1.1fr_0.65fr_0.55fr_0.65fr_170px] gap-4 bg-background px-4 py-3 text-xs font-black uppercase text-ink-muted lg:grid">
               <span>Paciente</span>
-              <span>Descricao</span>
+              <span>Descrição</span>
               <span>Vencimento</span>
               <span>Valor</span>
               <span>Status</span>
-              <span>Acoes</span>
+              <span>Ações</span>
             </div>
             <div className="divide-y divide-border bg-white">
               {filtered.map((invoice) => (
@@ -185,7 +185,7 @@ export function FinancePanel({ searchQuery = "", onNotify }: { searchQuery?: str
                   <Badge variant={statusStyle[invoice.status]}>{invoice.status}</Badge>
                   <div className="flex gap-2">
                     <Button type="button" size="sm" variant="outline" onClick={() => markPaid(invoice.id)}>Baixar</Button>
-                    <Button type="button" size="icon" variant="ghost" aria-label="Enviar cobranca" onClick={() => onNotify(`Cobranca enviada para ${invoice.patient}.`)}>
+                    <Button type="button" size="icon" variant="ghost" aria-label="Enviar cobrança" onClick={() => onNotify(`Cobrança enviada para ${invoice.patient}.`)}>
                       <Send className="h-4 w-4" />
                     </Button>
                     <Button type="button" size="icon" variant="ghost" aria-label="Gerar recibo" onClick={() => onNotify(`Recibo de ${invoice.patient} preparado.`)}>
