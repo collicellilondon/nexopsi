@@ -151,8 +151,8 @@ function ProfessionalPrintHeader({
     <header className="border-b border-border pb-5">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="flex h-14 w-48 items-center overflow-hidden rounded-md bg-white">
-            <Image src="/brand/nexopsi-logo.png" alt="Nexopsi" width={210} height={105} className="h-full w-full object-contain" />
+          <div className="flex h-20 w-72 items-center overflow-hidden rounded-md bg-white">
+            <Image src="/brand/nexopsi-logo.png" alt="Nexopsi" width={320} height={160} className="h-full w-full object-contain" />
           </div>
           <h3 className="mt-4 text-2xl font-black text-ink">{title}</h3>
           <p className="text-sm font-semibold text-ink-muted">{subtitle}</p>

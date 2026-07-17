@@ -97,16 +97,16 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
       >
         <div className="flex items-center justify-between px-2">
           <div className={cn("flex items-center gap-3", collapsed && "lg:justify-center")}>
-            <div className={cn("flex h-11 items-center overflow-hidden rounded-md bg-white", collapsed ? "lg:w-11" : "w-40")}>
+            <div className={cn("flex h-16 items-center overflow-hidden rounded-md bg-white", collapsed ? "lg:w-12" : "w-56")}>
               <Image
                 src="/brand/nexopsi-logo.png"
                 alt="Nexopsi"
-                width={180}
-                height={90}
+                width={260}
+                height={130}
                 priority
-                className={cn("h-11 w-40 object-contain", collapsed && "lg:hidden")}
+                className={cn("h-16 w-56 object-contain", collapsed && "lg:hidden")}
               />
-              <span className={cn("hidden h-10 w-10 items-center justify-center rounded-md bg-primary text-sm font-black text-white", collapsed && "lg:flex")}>
+              <span className={cn("hidden h-12 w-12 items-center justify-center rounded-md bg-primary text-sm font-black text-white", collapsed && "lg:flex")}>
                 NX
               </span>
             </div>

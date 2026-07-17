@@ -114,12 +114,12 @@ export function LoginPage() {
           <div className="flex flex-1 items-center justify-center">
             <div className="w-full max-w-[430px] animate-[authEnter_520ms_ease-out]">
               <div className="mb-8">
-                <div className="mb-5 flex h-16 w-52 items-center overflow-hidden rounded-md bg-white">
+                <div className="mb-6 flex h-24 w-72 items-center overflow-hidden rounded-md bg-white">
                   <Image
                     src="/brand/nexopsi-logo.png"
                     alt="Nexopsi"
-                    width={220}
-                    height={110}
+                    width={320}
+                    height={160}
                     priority
                     className="h-full w-full object-contain"
                   />
@@ -284,12 +284,12 @@ function InstitutionalPanel() {
 function BrandMark({ compact = false }: { compact?: boolean }) {
   return (
     <div className="flex items-center gap-3">
-      <div className={cn("flex items-center justify-center overflow-hidden rounded-md bg-white", compact ? "h-11 w-36" : "h-14 w-44")}>
+      <div className={cn("flex items-center justify-center overflow-hidden rounded-md bg-white", compact ? "h-14 w-44" : "h-16 w-56")}>
         <Image
           src="/brand/nexopsi-logo.png"
           alt="Nexopsi"
-          width={180}
-          height={90}
+          width={260}
+          height={130}
           priority={compact}
           className="h-full w-full object-contain"
         />
