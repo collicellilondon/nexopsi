@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -274,11 +275,15 @@ function InstitutionalPanel() {
 function BrandMark({ compact = false }: { compact?: boolean }) {
   return (
     <div className="flex items-center gap-3">
-      <div className={cn("flex items-center justify-center rounded-md bg-white text-primary", compact ? "h-10 w-10" : "h-11 w-11")}>
-        <Sparkles className="h-5 w-5" />
-      </div>
-      <div>
-        <p className={cn("font-black", compact ? "text-lg text-ink" : "text-xl text-white")}>Nexopsi</p>
+      <div className={cn("flex items-center justify-center overflow-hidden rounded-md bg-white", compact ? "h-11 w-36" : "h-14 w-44")}>
+        <Image
+          src="/brand/nexopsi-logo.png"
+          alt="Nexopsi"
+          width={180}
+          height={90}
+          priority={compact}
+          className="h-full w-full object-contain"
+        />
       </div>
     </div>
   );

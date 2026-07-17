@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import {
   BarChart3,
   Bell,
@@ -96,10 +97,18 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
       >
         <div className="flex items-center justify-between px-2">
           <div className={cn("flex items-center gap-3", collapsed && "lg:justify-center")}>
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-sm font-black text-white">NX</div>
-            <div className={cn("min-w-0", collapsed && "lg:hidden")}>
-              <p className="text-sm font-black text-ink">Nexopsi</p>
-              <p className="text-xs text-ink-muted">Gestao clinica</p>
+            <div className={cn("flex h-11 items-center overflow-hidden rounded-md bg-white", collapsed ? "lg:w-11" : "w-40")}>
+              <Image
+                src="/brand/nexopsi-logo.png"
+                alt="Nexopsi"
+                width={180}
+                height={90}
+                priority
+                className={cn("h-11 w-40 object-contain", collapsed && "lg:hidden")}
+              />
+              <span className={cn("hidden h-10 w-10 items-center justify-center rounded-md bg-primary text-sm font-black text-white", collapsed && "lg:flex")}>
+                NX
+              </span>
             </div>
           </div>
           <Button type="button" variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Fechar menu">
