@@ -44,12 +44,13 @@ type AppShellProps = {
   professionalPhotoUrl?: string;
   activeView: AppView;
   onNavigate: (view: AppView) => void;
+  onGlobalSearch: (query: string) => void;
   onNotify: (message: string) => void;
   onCreatePatient: () => void;
   onCreateSession: () => void;
 };
 
-export function AppShell({ children, professionalName, professionalSpecialty, professionalPhotoUrl, activeView, onNavigate, onNotify, onCreatePatient, onCreateSession }: AppShellProps) {
+export function AppShell({ children, professionalName, professionalSpecialty, professionalPhotoUrl, activeView, onNavigate, onGlobalSearch, onNotify, onCreatePatient, onCreateSession }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -68,17 +69,7 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
       onNotify("Digite algo para executar a busca global.");
       return;
     }
-    const target: AppView = value.includes("document") || value.includes("contrato") || value.includes("prontuario")
-      ? "documentos"
-      : value.includes("finance") || value.includes("pagamento") || value.includes("fatura")
-        ? "financeiro"
-        : value.includes("agenda")
-          ? "agenda"
-          : value.includes("sess")
-          ? "sessoes"
-          : "pacientes";
-    onNavigate(target);
-    onNotify(`Busca global executada por "${query}".`);
+    onGlobalSearch(query);
   }
 
   function signOut() {
@@ -168,18 +159,18 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
             <Button type="button" variant="ghost" size="icon" className="hidden lg:inline-flex" onClick={() => setCollapsed((value) => !value)} aria-label="Recolher menu">
               <Menu className="h-5 w-5" />
             </Button>
-            <div className="relative max-w-xl flex-1">
+            <form className="relative flex max-w-xl flex-1 gap-2" onSubmit={(event) => { event.preventDefault(); runSearch(); }}>
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
               <Input
                 className="pl-9"
-                placeholder="Buscar paciente, documento, sessao ou pagamento"
+                placeholder="Buscar paciente, documento, sessao, funcao ou pagamento"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") runSearch();
-                }}
               />
-            </div>
+              <Button type="submit" variant="outline" className="hidden px-4 md:inline-flex">
+                Buscar
+              </Button>
+            </form>
             <Button type="button" className="hidden sm:inline-flex" onClick={onCreateSession}>
               <Plus className="h-4 w-4" />
               Acao rapida

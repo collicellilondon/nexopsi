@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AlertTriangle, CheckCircle2, FileText, Plus, Receipt, Search, Send, WalletCards } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -36,10 +36,14 @@ const statusStyle: Record<InvoiceStatus, "success" | "warning" | "destructive" |
   cancelada: "muted"
 };
 
-export function FinancePanel({ onNotify }: { onNotify: (message: string) => void }) {
+export function FinancePanel({ searchQuery = "", onNotify }: { searchQuery?: string; onNotify: (message: string) => void }) {
   const [invoices, setInvoices] = useState(initialInvoices);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<InvoiceStatus | "todas">("todas");
+
+  useEffect(() => {
+    setQuery(searchQuery);
+  }, [searchQuery]);
 
   const filtered = useMemo(() => {
     return invoices.filter((invoice) => {

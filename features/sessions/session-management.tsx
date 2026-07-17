@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CalendarClock,
   CheckCircle2,
@@ -137,14 +137,19 @@ const paymentVariant = {
 
 type SessionManagementProps = {
   createdCount: number;
+  searchQuery?: string;
   onNotify: (message: string) => void;
 };
 
-export function SessionManagement({ createdCount, onNotify }: SessionManagementProps) {
+export function SessionManagement({ createdCount, searchQuery = "", onNotify }: SessionManagementProps) {
   const [sessions, setSessions] = useState(initialSessions);
   const [selectedId, setSelectedId] = useState(initialSessions[0].id);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"todas" | SessionStatus>("todas");
+
+  useEffect(() => {
+    setQuery(searchQuery);
+  }, [searchQuery]);
 
   const visibleSessions = useMemo(() => {
     const search = query.trim().toLowerCase();

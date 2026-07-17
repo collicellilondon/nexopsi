@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowUpDown, CalendarClock, Filter, MoreHorizontal, Search, WalletCards } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,15 +27,20 @@ const statusVariant: Record<PatientStatus, "success" | "muted" | "secondary" | "
 
 type PatientListProps = {
   patients: Patient[];
+  searchQuery?: string;
   onNotify: (message: string) => void;
 };
 
-export function PatientList({ patients, onNotify }: PatientListProps) {
+export function PatientList({ patients, searchQuery = "", onNotify }: PatientListProps) {
   const [items, setItems] = useState<Patient[]>(initialPatients);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<PatientStatus | "todos">("todos");
   const [showOnlyDebt, setShowOnlyDebt] = useState(false);
   const [sortAsc, setSortAsc] = useState(true);
+
+  useEffect(() => {
+    setQuery(searchQuery);
+  }, [searchQuery]);
 
   const allPatients = useMemo(() => [...patients, ...items], [patients, items]);
 

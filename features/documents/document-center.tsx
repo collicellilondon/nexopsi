@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
   CheckCircle2,
@@ -161,14 +161,19 @@ type DocumentCenterProps = {
   professionalRegister: string;
   professionalEmail: string;
   professionalPhone: string;
+  searchQuery?: string;
   onNotify: (message: string) => void;
 };
 
-export function DocumentCenter({ professionalName, professionalRegister, professionalEmail, professionalPhone, onNotify }: DocumentCenterProps) {
+export function DocumentCenter({ professionalName, professionalRegister, professionalEmail, professionalPhone, searchQuery = "", onNotify }: DocumentCenterProps) {
   const [documents, setDocuments] = useState(initialDocuments);
   const [selectedId, setSelectedId] = useState(initialDocuments[0].id);
   const [query, setQuery] = useState("");
   const [kindFilter, setKindFilter] = useState<"todos" | DocumentKind>("todos");
+
+  useEffect(() => {
+    setQuery(searchQuery);
+  }, [searchQuery]);
 
   const visibleDocuments = useMemo(() => {
     const search = query.trim().toLowerCase();

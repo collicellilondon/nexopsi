@@ -14,6 +14,7 @@ import { FinancePanel } from "@/features/finance/finance-panel";
 import { SessionManagement } from "@/features/sessions/session-management";
 import { DocumentCenter } from "@/features/documents/document-center";
 import { ProfessionalProfile, type ProfessionalProfileData } from "@/features/settings/professional-profile";
+import { patients as initialPatients } from "@/lib/mock-data";
 import type { Patient } from "@/lib/types";
 
 export function InteractiveHome() {
@@ -21,6 +22,7 @@ export function InteractiveHome() {
   const [patientModalOpen, setPatientModalOpen] = useState(false);
   const [sessionSeed, setSessionSeed] = useState(0);
   const [activeView, setActiveView] = useState<AppView>("inicio");
+  const [globalFilter, setGlobalFilter] = useState("");
   const [professionalProfile, setProfessionalProfile] = useState<ProfessionalProfileData>({
     name: "Tatiane Bonfin",
     register: "CRP 06/123456",
@@ -38,6 +40,7 @@ export function InteractiveHome() {
 
   function createPatient() {
     setActiveView("pacientes");
+    setGlobalFilter("");
     setPatientModalOpen(true);
     notify("Cadastro completo de paciente aberto.");
   }
@@ -47,17 +50,91 @@ export function InteractiveHome() {
     setPatientModalOpen(false);
     notify(`Paciente ${patient.name} cadastrado com ficha completa.`);
     setActiveView("pacientes");
+    setGlobalFilter(patient.name);
   }
 
   function createSession() {
     setActiveView("agenda");
+    setGlobalFilter("");
     setSessionSeed((value) => value + 1);
     notify("Sessao de teste adicionada na agenda.");
   }
 
   function openDocuments() {
     setActiveView("documentos");
+    setGlobalFilter("");
     notify("Central de Documentos aberta para gerar um novo arquivo.");
+  }
+
+  function runGlobalSearch(rawQuery: string) {
+    const query = rawQuery.trim();
+    const normalized = query.toLowerCase();
+    if (!normalized) {
+      notify("Digite algo para executar a busca global.");
+      return;
+    }
+
+    const allPatients = [...patients, ...initialPatients];
+    const foundPatient = allPatients.find((patient) =>
+      [patient.name, patient.email, patient.phone, patient.cpf, patient.address, patient.therapist, ...patient.tags]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(normalized)
+    );
+
+    if (foundPatient || includesAny(normalized, ["paciente", "cpf", "telefone", "contato", "endereco", "saldo"])) {
+      setActiveView("pacientes");
+      setGlobalFilter(query);
+      notify(foundPatient ? `Paciente encontrado: ${foundPatient.name}.` : `Busca aberta em Pacientes por "${query}".`);
+      return;
+    }
+
+    if (includesAny(normalized, ["documento", "document", "prontuario", "contrato", "atestado", "declaracao", "lgpd", "termo", "recibo", "encaminhamento", "pdf"])) {
+      setActiveView("documentos");
+      setGlobalFilter(query);
+      notify(`Busca aberta em Documentos por "${query}".`);
+      return;
+    }
+
+    if (includesAny(normalized, ["sessao", "sessões", "sessoes", "evolucao", "tarefa", "intervencao", "falta", "presenca"])) {
+      setActiveView("sessoes");
+      setGlobalFilter(query);
+      notify(`Busca aberta em Sessoes por "${query}".`);
+      return;
+    }
+
+    if (includesAny(normalized, ["agenda", "horario", "calendario", "retorno", "consulta"])) {
+      setActiveView("agenda");
+      setGlobalFilter("");
+      notify(`Agenda aberta para localizar "${query}".`);
+      return;
+    }
+
+    if (includesAny(normalized, ["financeiro", "fatura", "mensalidade", "pagamento", "inadimplente", "adimplente", "cobranca", "pix", "boleto"])) {
+      setActiveView("financeiro");
+      setGlobalFilter(query);
+      notify(`Busca aberta no Financeiro por "${query}".`);
+      return;
+    }
+
+    if (includesAny(normalized, ["relatorio", "grafico", "imprimir", "resumo"])) {
+      setActiveView("relatorios");
+      setGlobalFilter("");
+      notify(`Relatorios abertos para "${query}".`);
+      return;
+    }
+
+    if (includesAny(normalized, ["configuracao", "config", "tema", "psicologa", "cadastro", "foto", "logo", "crp", "registro"])) {
+      setActiveView("configuracoes");
+      setGlobalFilter("");
+      notify(`Configuracoes abertas para "${query}".`);
+      return;
+    }
+
+    setActiveView("inicio");
+    setGlobalFilter("");
+    notify(`Nao encontrei resultado direto para "${query}". Tente paciente, documento, sessao, financeiro ou configuracoes.`);
   }
 
   function renderActiveView() {
@@ -75,7 +152,7 @@ export function InteractiveHome() {
             icon={<Users className="h-4 w-4" />}
             onAction={createPatient}
           />
-          <PatientList patients={patients} onNotify={notify} />
+          <PatientList patients={patients} searchQuery={activeView === "pacientes" ? globalFilter : ""} onNotify={notify} />
         </>
       );
     }
@@ -105,7 +182,7 @@ export function InteractiveHome() {
             icon={<Stethoscope className="h-4 w-4" />}
             onAction={createSession}
           />
-          <SessionManagement createdCount={sessionSeed} onNotify={notify} />
+          <SessionManagement createdCount={sessionSeed} searchQuery={activeView === "sessoes" ? globalFilter : ""} onNotify={notify} />
         </>
       );
     }
@@ -120,7 +197,7 @@ export function InteractiveHome() {
             icon={<WalletCards className="h-4 w-4" />}
             onAction={() => notify("Use o botao Nova fatura dentro do financeiro.")}
           />
-          <FinancePanel onNotify={notify} />
+          <FinancePanel searchQuery={activeView === "financeiro" ? globalFilter : ""} onNotify={notify} />
         </>
       );
     }
@@ -140,6 +217,7 @@ export function InteractiveHome() {
             professionalRegister={professionalProfile.register}
             professionalEmail={professionalProfile.email}
             professionalPhone={professionalProfile.phone}
+            searchQuery={activeView === "documentos" ? globalFilter : ""}
             onNotify={notify}
           />
         </>
@@ -191,7 +269,11 @@ export function InteractiveHome() {
       professionalSpecialty={professionalProfile.specialty}
       professionalPhotoUrl={professionalProfile.photoUrl}
       activeView={activeView}
-      onNavigate={setActiveView}
+      onNavigate={(view) => {
+        setActiveView(view);
+        setGlobalFilter("");
+      }}
+      onGlobalSearch={runGlobalSearch}
       onNotify={notify}
       onCreatePatient={createPatient}
       onCreateSession={createSession}
@@ -206,4 +288,8 @@ export function InteractiveHome() {
       {patientModalOpen ? <PatientRegistrationModal onClose={() => setPatientModalOpen(false)} onCreate={savePatient} /> : null}
     </AppShell>
   );
+}
+
+function includesAny(value: string, terms: string[]) {
+  return terms.some((term) => value.includes(term));
 }
