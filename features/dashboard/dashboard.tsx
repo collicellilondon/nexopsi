@@ -18,12 +18,13 @@ const toneClass = {
 };
 
 type DashboardProps = {
+  professionalName: string;
   onCreatePatient: () => void;
   onCreateSession: () => void;
   onNotify: (message: string) => void;
 };
 
-export function Dashboard({ onCreatePatient, onCreateSession, onNotify }: DashboardProps) {
+export function Dashboard({ professionalName, onCreatePatient, onCreateSession, onNotify }: DashboardProps) {
   const [pendingItems, setPendingItems] = useState(clinicalPendencies);
 
   const quickActions = [
@@ -43,7 +44,7 @@ export function Dashboard({ onCreatePatient, onCreateSession, onNotify }: Dashbo
       <div className="flex flex-col gap-4 rounded-lg bg-primary px-5 py-6 text-white shadow-soft md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-sm font-semibold text-white/75">Quinta-feira, 16 de julho de 2026</p>
-          <h1 className="mt-2 text-2xl font-black md:text-3xl">Bom dia, Ana. Sua clínica está organizada para hoje.</h1>
+          <h1 className="mt-2 text-2xl font-black md:text-3xl">Bom dia, {getFirstName(professionalName)}. Sua clínica está organizada para hoje.</h1>
           <p className="mt-2 max-w-3xl text-sm text-white/78">
             Há sessões confirmadas, pendências clínicas para revisar e pagamentos que podem ser resolvidos sem sair do fluxo de atendimento.
           </p>
@@ -165,4 +166,8 @@ export function Dashboard({ onCreatePatient, onCreateSession, onNotify }: Dashbo
       </div>
     </section>
   );
+}
+
+function getFirstName(name: string) {
+  return name.trim().split(" ")[0] || "Tatiane";
 }

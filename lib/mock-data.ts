@@ -12,7 +12,7 @@ export const patients: Patient[] = [
     pendingBalance: 0,
     phone: "(11) 99842-1022",
     email: "marina.duarte@email.com",
-    therapist: "Dra. Ana Ribeiro"
+    therapist: "Tatiane Bonfin"
   },
   {
     id: "pac-002",
@@ -25,7 +25,7 @@ export const patients: Patient[] = [
     pendingBalance: 320,
     phone: "(21) 98733-4401",
     email: "caio.martins@email.com",
-    therapist: "Dra. Ana Ribeiro"
+    therapist: "Tatiane Bonfin"
   },
   {
     id: "pac-003",
@@ -38,7 +38,7 @@ export const patients: Patient[] = [
     pendingBalance: 0,
     phone: "(31) 97120-8802",
     email: "helena.costa@email.com",
-    therapist: "Dr. Paulo Mendes"
+    therapist: "Tatiane Bonfin"
   },
   {
     id: "pac-004",
@@ -51,7 +51,7 @@ export const patients: Patient[] = [
     pendingBalance: 640,
     phone: "(41) 99310-5529",
     email: "rafael.nogueira@email.com",
-    therapist: "Dra. Ana Ribeiro"
+    therapist: "Tatiane Bonfin"
   }
 ];
 

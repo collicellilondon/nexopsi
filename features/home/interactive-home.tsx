@@ -63,7 +63,7 @@ export function InteractiveHome() {
           {message}
         </div>
 
-        <Dashboard onCreatePatient={createPatient} onCreateSession={createSession} onNotify={notify} />
+        <Dashboard professionalName={professionalProfile.name} onCreatePatient={createPatient} onCreateSession={createSession} onNotify={notify} />
 
         <section id="pacientes">
           <SectionHeading
