@@ -1,4 +1,4 @@
-import type { Appointment, CashFlowPoint, DashboardMetric, Patient } from "@/lib/types";
+import type { Appointment, DashboardMetric, Patient } from "@/lib/types";
 
 export const patients: Patient[] = [
   {
@@ -109,15 +109,6 @@ export const dashboardMetrics: DashboardMetric[] = [
   { label: "Pacientes ativos", value: "126", helper: "9 novos nos últimos 30 dias", tone: "secondary" },
   { label: "Faltas do mês", value: "4", helper: "Taxa de 3,1%", tone: "danger" },
   { label: "Próximo horário livre", value: "Sex, 10:30", helper: "Duração sugerida: 50 min", tone: "primary" }
-];
-
-export const cashFlow: CashFlowPoint[] = [
-  { month: "Fev", receita: 15200, despesas: 6200 },
-  { month: "Mar", receita: 16900, despesas: 6500 },
-  { month: "Abr", receita: 18100, despesas: 7000 },
-  { month: "Mai", receita: 17600, despesas: 6800 },
-  { month: "Jun", receita: 16400, despesas: 6400 },
-  { month: "Jul", receita: 18420, despesas: 7100 }
 ];
 
 export const clinicalPendencies = [

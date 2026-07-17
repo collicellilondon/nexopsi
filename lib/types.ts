@@ -43,9 +43,3 @@ export type DashboardMetric = {
   helper: string;
   tone: "primary" | "secondary" | "warning" | "success" | "danger";
 };
-
-export type CashFlowPoint = {
-  month: string;
-  receita: number;
-  despesas: number;
-};
