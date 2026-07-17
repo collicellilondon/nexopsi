@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Settings, Users } from "lucide-react";
+import { Plus, Settings, Users, WalletCards } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { SectionHeading } from "@/components/section-heading";
 import { Dashboard } from "@/features/dashboard/dashboard";
@@ -10,6 +10,8 @@ import { PatientRegistrationModal } from "@/features/patients/patient-registrati
 import { ClinicalCalendar } from "@/features/calendar/clinical-calendar";
 import { ReportsPanel } from "@/features/reports/reports-panel";
 import { ThemeSettings } from "@/features/settings/theme-settings";
+import { FinancePanel } from "@/features/finance/finance-panel";
+import { ProfessionalProfile } from "@/features/settings/professional-profile";
 import type { Patient } from "@/lib/types";
 
 export function InteractiveHome() {
@@ -71,6 +73,17 @@ export function InteractiveHome() {
           <ClinicalCalendar createdCount={sessionSeed} onNotify={notify} />
         </section>
 
+        <section id="financeiro">
+          <SectionHeading
+            title="Financeiro"
+            description="Faturas, mensalidades, adimplência, inadimplência, cobranças, recibos e previsibilidade de caixa."
+            action="Nova fatura"
+            icon={<WalletCards className="h-4 w-4" />}
+            onAction={() => notify("Use o botão Nova fatura dentro do financeiro.")}
+          />
+          <FinancePanel onNotify={notify} />
+        </section>
+
         <section id="relatorios">
           <SectionHeading
             title="Relatórios"
@@ -91,6 +104,9 @@ export function InteractiveHome() {
             onAction={() => notify("Tema padrão Nexopsi selecionado.")}
           />
           <ThemeSettings onNotify={notify} />
+          <div className="mt-6">
+            <ProfessionalProfile onNotify={notify} />
+          </div>
         </section>
       </div>
 

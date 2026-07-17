@@ -52,9 +52,11 @@ export function AppShell({ children, onNotify, onCreatePatient, onCreateSession 
     setActive(label);
     const target =
       label === "Agenda"
-        ? "agenda"
+          ? "agenda"
         : label === "Pacientes"
           ? "pacientes"
+          : label === "Financeiro"
+            ? "financeiro"
           : label === "Relatórios"
             ? "relatorios"
             : label === "Configurações"
