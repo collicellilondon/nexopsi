@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { FileText, Plus, Settings, Stethoscope, Users, WalletCards } from "lucide-react";
-import { AppShell, type AppView } from "@/components/app-shell";
+import { AppShell, type AppView, type SearchSuggestion } from "@/components/app-shell";
 import { SectionHeading } from "@/components/section-heading";
 import { Dashboard } from "@/features/dashboard/dashboard";
 import { PatientList } from "@/features/patients/patient-list";
@@ -33,6 +33,17 @@ export function InteractiveHome() {
     photoUrl: ""
   });
   const [message, setMessage] = useState("Ambiente de testes ativo: os dados sao mockados e reiniciam ao recarregar.");
+  const allPatients = useMemo(() => dedupePatients([...patients, ...initialPatients]), [patients]);
+  const patientSuggestions = useMemo<SearchSuggestion[]>(
+    () =>
+      allPatients.map((patient) => ({
+        id: patient.id,
+        label: patient.name,
+        description: `${patient.phone} - ${patient.email}`,
+        searchText: [patient.cpf, patient.address, patient.therapist, patient.status, ...patient.tags].filter(Boolean).join(" ")
+      })),
+    [allPatients]
+  );
 
   function notify(text: string) {
     setMessage(text);
@@ -68,17 +79,18 @@ export function InteractiveHome() {
 
   function runGlobalSearch(rawQuery: string) {
     const query = rawQuery.trim();
-    const normalized = query.toLowerCase();
+    const normalized = normalizeSearch(query);
     if (!normalized) {
       notify("Digite algo para executar a busca global.");
       return;
     }
 
-    const allPatients = [...patients, ...initialPatients];
     const foundPatient = allPatients.find((patient) =>
       [patient.name, patient.email, patient.phone, patient.cpf, patient.address, patient.therapist, ...patient.tags]
         .filter(Boolean)
         .join(" ")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
         .toLowerCase()
         .includes(normalized)
     );
@@ -274,6 +286,7 @@ export function InteractiveHome() {
         setGlobalFilter("");
       }}
       onGlobalSearch={runGlobalSearch}
+      searchSuggestions={patientSuggestions}
       onNotify={notify}
       onCreatePatient={createPatient}
       onCreateSession={createSession}
@@ -292,4 +305,22 @@ export function InteractiveHome() {
 
 function includesAny(value: string, terms: string[]) {
   return terms.some((term) => value.includes(term));
+}
+
+function normalizeSearch(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function dedupePatients(items: Patient[]) {
+  const seen = new Set<string>();
+  return items.filter((patient) => {
+    const key = patient.id || patient.email || patient.name;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }

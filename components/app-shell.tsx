@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import {
   BarChart3,
@@ -25,6 +25,12 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 export type AppView = "inicio" | "agenda" | "pacientes" | "sessoes" | "financeiro" | "documentos" | "relatorios" | "configuracoes";
+export type SearchSuggestion = {
+  id: string;
+  label: string;
+  description: string;
+  searchText: string;
+};
 
 const navItems: Array<{ label: string; view: AppView; icon: typeof Home }> = [
   { label: "Inicio", view: "inicio", icon: Home },
@@ -45,17 +51,26 @@ type AppShellProps = {
   activeView: AppView;
   onNavigate: (view: AppView) => void;
   onGlobalSearch: (query: string) => void;
+  searchSuggestions?: SearchSuggestion[];
   onNotify: (message: string) => void;
   onCreatePatient: () => void;
   onCreateSession: () => void;
 };
 
-export function AppShell({ children, professionalName, professionalSpecialty, professionalPhotoUrl, activeView, onNavigate, onGlobalSearch, onNotify, onCreatePatient, onCreateSession }: AppShellProps) {
+export function AppShell({ children, professionalName, professionalSpecialty, professionalPhotoUrl, activeView, onNavigate, onGlobalSearch, searchSuggestions = [], onNotify, onCreatePatient, onCreateSession }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const initials = getInitials(professionalName);
+  const visibleSuggestions = useMemo(() => {
+    const value = normalizeSearch(query);
+    if (value.length < 2) return [];
+    return searchSuggestions
+      .filter((suggestion) => normalizeSearch(`${suggestion.label} ${suggestion.description} ${suggestion.searchText}`).includes(value))
+      .slice(0, 6);
+  }, [query, searchSuggestions]);
 
   function goTo(view: AppView, label: string) {
     onNavigate(view);
@@ -70,6 +85,12 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
       return;
     }
     onGlobalSearch(query);
+  }
+
+  function selectSuggestion(suggestion: SearchSuggestion) {
+    setQuery(suggestion.label);
+    setSearchFocused(false);
+    onGlobalSearch(suggestion.label);
   }
 
   function signOut() {
@@ -166,10 +187,26 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
                 placeholder="Buscar paciente, documento, sessao, funcao ou pagamento"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setTimeout(() => setSearchFocused(false), 140)}
               />
               <Button type="submit" variant="outline" className="hidden px-4 md:inline-flex">
                 Buscar
               </Button>
+              {searchFocused && visibleSuggestions.length > 0 ? (
+                <div className="absolute left-0 right-24 top-12 z-40 overflow-hidden rounded-lg border border-border bg-white shadow-soft">
+                  <div className="border-b border-border bg-background px-3 py-2 text-xs font-black uppercase text-ink-muted">Sugestoes de pacientes</div>
+                  {visibleSuggestions.map((suggestion) => (
+                    <button key={suggestion.id} type="button" className="flex w-full items-start gap-3 px-3 py-3 text-left transition hover:bg-primary-soft" onMouseDown={(event) => event.preventDefault()} onClick={() => selectSuggestion(suggestion)}>
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-soft text-xs font-black text-primary">{getInitials(suggestion.label)}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-black text-ink">{suggestion.label}</span>
+                        <span className="block truncate text-xs font-semibold text-ink-muted">{suggestion.description}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </form>
             <Button type="button" className="hidden sm:inline-flex" onClick={onCreateSession}>
               <Plus className="h-4 w-4" />
@@ -221,6 +258,14 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
       </div>
     </div>
   );
+}
+
+function normalizeSearch(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
 function getInitials(name: string) {
