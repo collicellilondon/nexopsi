@@ -8,18 +8,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import type { Patient } from "@/lib/types";
 
 const attendanceData = [
-  { name: "Confirmadas", value: 42, color: "#245B68" },
-  { name: "Realizadas", value: 36, color: "#2F7D63" },
-  { name: "Faltas", value: 4, color: "#B42318" },
-  { name: "Pendentes", value: 8, color: "#B7791F" }
+  { name: "Confirmadas", value: 0, color: "#245B68" },
+  { name: "Realizadas", value: 0, color: "#2F7D63" },
+  { name: "Faltas", value: 0, color: "#B42318" },
+  { name: "Pendentes", value: 0, color: "#B7791F" }
 ];
 
 const monthlyData = [
-  { month: "Mar", sessoes: 88, novos: 12 },
-  { month: "Abr", sessoes: 94, novos: 9 },
-  { month: "Mai", sessoes: 101, novos: 15 },
-  { month: "Jun", sessoes: 96, novos: 11 },
-  { month: "Jul", sessoes: 112, novos: 18 }
+  { month: "Mar", sessoes: 0, novos: 0 },
+  { month: "Abr", sessoes: 0, novos: 0 },
+  { month: "Mai", sessoes: 0, novos: 0 },
+  { month: "Jun", sessoes: 0, novos: 0 },
+  { month: "Jul", sessoes: 0, novos: 0 }
 ];
 
 type ReportsPanelProps = {
@@ -117,12 +117,12 @@ export function ReportsPanel({ patients, professionalName, professionalRegister,
           professionalPhone={professionalPhone}
         />
         <div className="mt-6 grid gap-5 md:grid-cols-2">
-          <Info title="Paciente" value={featuredPatient?.name ?? "Marina Duarte"} />
-          <Info title="Contato" value={featuredPatient?.phone ?? "(11) 99842-1022"} />
-          <Info title="E-mail" value={featuredPatient?.email ?? "paciente@email.com"} />
-          <Info title="Endereco" value={featuredPatient?.address ?? "Endereco cadastral completo"} />
-          <Info title="Queixa principal" value={featuredPatient?.mainComplaint ?? "Acompanhamento terapeutico continuo com foco em organizacao emocional."} />
-          <Info title="Ultima evolucao" value="Paciente compareceu a sessao, manteve boa adesao e recebeu tarefa terapeutica para a proxima semana." />
+          <Info title="Paciente" value={featuredPatient?.name ?? "Paciente a definir"} />
+          <Info title="Contato" value={featuredPatient?.phone ?? "-"} />
+          <Info title="E-mail" value={featuredPatient?.email ?? "-"} />
+          <Info title="Endereco" value={featuredPatient?.address ?? "-"} />
+          <Info title="Queixa principal" value={featuredPatient?.mainComplaint ?? "Sem paciente cadastrado para este relatorio."} />
+          <Info title="Ultima evolucao" value="Sem evolucao registrada." />
         </div>
         <footer className="mt-8 border-t border-border pt-5 text-sm text-ink-muted">
           Assinatura profissional: {professionalName} - {professionalRegister}

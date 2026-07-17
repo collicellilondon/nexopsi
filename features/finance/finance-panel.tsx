@@ -21,13 +21,7 @@ type Invoice = {
   method: string;
 };
 
-const initialInvoices: Invoice[] = [
-  { id: "fat-001", patient: "Marina Duarte", description: "Mensalidade julho - 4 sessões", dueDate: "2026-07-10", amount: 1280, status: "paga", method: "Pix" },
-  { id: "fat-002", patient: "Caio Martins", description: "Pacote terapêutico - parcela 2/3", dueDate: "2026-07-15", amount: 960, status: "atrasada", method: "Cartão" },
-  { id: "fat-003", patient: "Helena Costa", description: "Avaliação inicial", dueDate: "2026-07-20", amount: 380, status: "pendente", method: "Boleto" },
-  { id: "fat-004", patient: "Rafael Nogueira", description: "Sessões avulsas", dueDate: "2026-07-05", amount: 640, status: "atrasada", method: "Pix" },
-  { id: "fat-005", patient: "Bianca Lima", description: "Mensalidade julho - 4 sessões", dueDate: "2026-07-25", amount: 1280, status: "pendente", method: "Pix" }
-];
+const initialInvoices: Invoice[] = [];
 
 const statusStyle: Record<InvoiceStatus, "success" | "warning" | "destructive" | "muted"> = {
   paga: "success",
@@ -67,10 +61,10 @@ export function FinancePanel({ searchQuery = "", onNotify }: { searchQuery?: str
   ];
 
   const monthlyData = [
-    { month: "Mar", receita: 14600, atraso: 1800 },
-    { month: "Abr", receita: 15800, atraso: 1200 },
-    { month: "Mai", receita: 17100, atraso: 2100 },
-    { month: "Jun", receita: 16400, atraso: 1600 },
+    { month: "Mar", receita: 0, atraso: 0 },
+    { month: "Abr", receita: 0, atraso: 0 },
+    { month: "Mai", receita: 0, atraso: 0 },
+    { month: "Jun", receita: 0, atraso: 0 },
     { month: "Jul", receita: totals.paid, atraso: totals.overdue }
   ];
 
@@ -82,8 +76,8 @@ export function FinancePanel({ searchQuery = "", onNotify }: { searchQuery?: str
   function createInvoice() {
     const invoice: Invoice = {
       id: `fat-${Date.now()}`,
-      patient: "Novo paciente financeiro",
-      description: "Mensalidade terapêutica - 4 sessões",
+      patient: "Paciente a definir",
+      description: "Mensalidade terapeutica - 4 sessoes",
       dueDate: "2026-08-05",
       amount: 1280,
       status: "pendente",
@@ -105,7 +99,7 @@ export function FinancePanel({ searchQuery = "", onNotify }: { searchQuery?: str
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Receita e inadimplência</CardTitle>
+            <CardTitle>Receita e inadimplencia</CardTitle>
             <CardDescription>Controle mensal de recebimentos, atrasos e previsibilidade.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -126,8 +120,8 @@ export function FinancePanel({ searchQuery = "", onNotify }: { searchQuery?: str
 
         <Card>
           <CardHeader>
-            <CardTitle>Adimplência</CardTitle>
-            <CardDescription>Distribuição atual das faturas.</CardDescription>
+            <CardTitle>Adimplencia</CardTitle>
+            <CardDescription>Distribuicao atual das faturas.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-72">
@@ -148,7 +142,7 @@ export function FinancePanel({ searchQuery = "", onNotify }: { searchQuery?: str
         <CardHeader>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <CardTitle>Faturas, mensalidades e cobranças</CardTitle>
+              <CardTitle>Faturas, mensalidades e cobrancas</CardTitle>
               <CardDescription>Gerencie pagamentos, inadimplentes, recibos e lembretes.</CardDescription>
             </div>
             <Button type="button" onClick={createInvoice}>
@@ -175,11 +169,11 @@ export function FinancePanel({ searchQuery = "", onNotify }: { searchQuery?: str
           <div className="overflow-hidden rounded-lg border border-border">
             <div className="hidden grid-cols-[1fr_1.1fr_0.65fr_0.55fr_0.65fr_170px] gap-4 bg-background px-4 py-3 text-xs font-black uppercase text-ink-muted lg:grid">
               <span>Paciente</span>
-              <span>Descrição</span>
+              <span>Descricao</span>
               <span>Vencimento</span>
               <span>Valor</span>
               <span>Status</span>
-              <span>Ações</span>
+              <span>Acoes</span>
             </div>
             <div className="divide-y divide-border bg-white">
               {filtered.map((invoice) => (
@@ -191,7 +185,7 @@ export function FinancePanel({ searchQuery = "", onNotify }: { searchQuery?: str
                   <Badge variant={statusStyle[invoice.status]}>{invoice.status}</Badge>
                   <div className="flex gap-2">
                     <Button type="button" size="sm" variant="outline" onClick={() => markPaid(invoice.id)}>Baixar</Button>
-                    <Button type="button" size="icon" variant="ghost" aria-label="Enviar cobrança" onClick={() => onNotify(`Cobrança enviada para ${invoice.patient}.`)}>
+                    <Button type="button" size="icon" variant="ghost" aria-label="Enviar cobranca" onClick={() => onNotify(`Cobranca enviada para ${invoice.patient}.`)}>
                       <Send className="h-4 w-4" />
                     </Button>
                     <Button type="button" size="icon" variant="ghost" aria-label="Gerar recibo" onClick={() => onNotify(`Recibo de ${invoice.patient} preparado.`)}>
@@ -200,6 +194,11 @@ export function FinancePanel({ searchQuery = "", onNotify }: { searchQuery?: str
                   </div>
                 </div>
               ))}
+              {filtered.length === 0 ? (
+                <div className="px-4 py-8 text-center text-sm font-semibold text-ink-muted">
+                  Nenhuma fatura cadastrada. Clique em Nova fatura para criar a primeira mensalidade.
+                </div>
+              ) : null}
             </div>
           </div>
         </CardContent>

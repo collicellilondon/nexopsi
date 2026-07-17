@@ -237,7 +237,7 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
               </Button>
             </div>
             <div className="mt-3 space-y-2 text-sm">
-              {["Pagamento de Caio vence hoje.", "3 evolucoes clinicas pendentes.", "Horario de sexta as 10:30 disponivel."].map((item) => (
+              {["Nenhuma notificacao pendente.", "Cadastre pacientes para gerar alertas.", "Agenda pronta para novos horarios."].map((item) => (
                 <button key={item} type="button" onClick={() => onNotify(item)} className="w-full rounded-md bg-background p-3 text-left font-semibold text-ink hover:bg-primary-soft">
                   {item}
                 </button>

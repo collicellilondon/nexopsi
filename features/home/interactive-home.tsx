@@ -32,7 +32,7 @@ export function InteractiveHome() {
     bio: "Atendimento adulto com foco em ansiedade, organizacao emocional e qualidade de vida.",
     photoUrl: ""
   });
-  const [message, setMessage] = useState("Ambiente de testes ativo: os dados sao mockados e reiniciam ao recarregar.");
+  const [message, setMessage] = useState("Ambiente limpo para apresentacao: cadastre pacientes, sessoes e documentos para testar o fluxo.");
   const allPatients = useMemo(() => dedupePatients([...patients, ...initialPatients]), [patients]);
   const patientSuggestions = useMemo<SearchSuggestion[]>(
     () =>

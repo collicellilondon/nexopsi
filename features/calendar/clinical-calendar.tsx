@@ -38,10 +38,10 @@ type ClinicalCalendarProps = {
 
 export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarProps) {
   const [items, setItems] = useState<Appointment[]>(initialAppointments);
-  const [selectedId, setSelectedId] = useState(initialAppointments[0].id);
+  const [selectedId, setSelectedId] = useState<string | null>(initialAppointments[0]?.id ?? null);
   const [modalId, setModalId] = useState<string | null>(null);
-  const [waitlist, setWaitlist] = useState(["Helena Costa • manhã", "Rafael Nogueira • online", "Bianca Lima • sexta"]);
-  const selected = items.find((item) => item.id === selectedId) ?? items[0];
+  const [waitlist, setWaitlist] = useState<string[]>([]);
+  const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null;
   const modalAppointment = items.find((item) => item.id === modalId);
   const activeLegend = Object.entries(statusColors).map(([, value]) => value);
 
@@ -50,7 +50,7 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
     const hour = 9 + createdCount;
     const appointment: Appointment = {
       id: `age-teste-${createdCount}`,
-      patientName: `Paciente Teste ${createdCount}`,
+      patientName: `Paciente a definir ${createdCount}`,
       start: `2026-07-19T${String(hour).padStart(2, "0")}:00:00`,
       end: `2026-07-19T${String(hour).padStart(2, "0")}:50:00`,
       type: "Terapia individual",
@@ -68,7 +68,7 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
     () =>
       items.map((appointment) => ({
         id: appointment.id,
-        title: `${appointment.patientName} • ${statusColors[appointment.status].label}`,
+        title: `${appointment.patientName} - ${statusColors[appointment.status].label}`,
         start: appointment.start,
         end: appointment.end,
         backgroundColor: statusColors[appointment.status].color,
@@ -80,20 +80,20 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
   function handleEventClick(arg: EventClickArg) {
     setSelectedId(arg.event.id);
     setModalId(arg.event.id);
-    onNotify("Popup avançado da sessão aberto.");
+    onNotify("Popup avancado da sessao aberto.");
   }
 
   function handleEventDrop(arg: EventDropArg) {
     setItems((current) => current.map((appointment) => (appointment.id === arg.event.id ? { ...appointment, start: arg.event.start?.toISOString() ?? appointment.start, end: arg.event.end?.toISOString() ?? appointment.end } : appointment)));
-    onNotify("Sessão reagendada por arrastar e soltar.");
+    onNotify("Sessao reagendada por arrastar e soltar.");
   }
 
   function handleSelect(arg: DateSelectArg) {
-    const appointment: Appointment = { id: `age-selecao-${Date.now()}`, patientName: "Horário bloqueado", start: arg.startStr, end: arg.endStr, type: "Retorno", mode: "presencial", status: "confirmada", paid: true, room: "Bloqueio" };
+    const appointment: Appointment = { id: `age-selecao-${Date.now()}`, patientName: "Horario bloqueado", start: arg.startStr, end: arg.endStr, type: "Retorno", mode: "presencial", status: "confirmada", paid: true, room: "Bloqueio" };
     setItems((current) => [...current, appointment]);
     setSelectedId(appointment.id);
     setModalId(appointment.id);
-    onNotify("Horário selecionado e bloqueado na agenda.");
+    onNotify("Horario selecionado e bloqueado na agenda.");
   }
 
   function updateAppointment(appointmentId: string, patch: Partial<Appointment>, message: string) {
@@ -102,25 +102,24 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
   }
 
   function updateSelected(patch: Partial<Appointment>, message: string) {
+    if (!selected) return;
     updateAppointment(selected.id, patch, message);
   }
 
   function createManualSession() {
     const next = items.length + 1;
-    const appointment: Appointment = { id: `age-manual-${next}`, patientName: `Sessão avulsa ${next}`, start: "2026-07-20T15:00:00", end: "2026-07-20T15:50:00", type: "Retorno", mode: "online", status: "pendente", paid: false, room: "Google Meet" };
+    const appointment: Appointment = { id: `age-manual-${next}`, patientName: `Sessao avulsa ${next}`, start: "2026-07-20T15:00:00", end: "2026-07-20T15:50:00", type: "Retorno", mode: "online", status: "pendente", paid: false, room: "Google Meet" };
     setItems((current) => [...current, appointment]);
     setSelectedId(appointment.id);
     setModalId(appointment.id);
-    onNotify("Nova sessão criada na agenda.");
+    onNotify("Nova sessao criada na agenda.");
   }
 
   function addFromWaitlist(item: string) {
     setWaitlist((current) => current.filter((entry) => entry !== item));
     createManualSession();
-    onNotify(`${item} encaixado em uma sessão de teste.`);
+    onNotify(`${item} encaixado em uma sessao de teste.`);
   }
-
-  if (!selected) return null;
 
   return (
     <>
@@ -129,13 +128,13 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
           <CardHeader className="border-b border-border">
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
-                <CardTitle>Agenda clínica</CardTitle>
-                <CardDescription>Clique em um horário com cliente para abrir o popup moderno com ações completas.</CardDescription>
+                <CardTitle>Agenda clinica</CardTitle>
+                <CardDescription>Clique em um horario com cliente para abrir o popup moderno com acoes completas.</CardDescription>
               </div>
               <div className="flex flex-wrap gap-2">
                 <div className="rounded-md border border-border bg-primary-soft px-3 py-2 text-sm font-bold text-primary">Cores por status do agendamento</div>
-                <Button type="button" variant="outline" size="sm" onClick={() => handleSelect({ startStr: "2026-07-21T08:00:00", endStr: "2026-07-21T09:00:00" } as DateSelectArg)}>Bloquear horário</Button>
-                <Button type="button" size="sm" onClick={createManualSession}>Nova sessão</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => handleSelect({ startStr: "2026-07-21T08:00:00", endStr: "2026-07-21T09:00:00" } as DateSelectArg)}>Bloquear horario</Button>
+                <Button type="button" size="sm" onClick={createManualSession}>Nova sessao</Button>
               </div>
             </div>
           </CardHeader>
@@ -157,7 +156,7 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
               eventDrop={handleEventDrop}
               select={handleSelect}
               headerToolbar={{ left: "prev,next today", center: "title", right: "timeGridDay,timeGridWeek,dayGridMonth,listWeek" }}
-              buttonText={{ today: "Hoje", day: "Dia", week: "Semana", month: "Mês", list: "Lista" }}
+              buttonText={{ today: "Hoje", day: "Dia", week: "Semana", month: "Mes", list: "Lista" }}
             />
           </CardContent>
         </Card>
@@ -166,7 +165,7 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
           <Card>
             <CardHeader>
               <CardTitle>Cores por status</CardTitle>
-              <CardDescription>A cor mostra a situação atual do agendamento da Tatiane Bonfin.</CardDescription>
+              <CardDescription>A cor mostra a situacao atual do agendamento da Tatiane Bonfin.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {activeLegend.map((item) => (
@@ -181,37 +180,51 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Detalhes da sessão</CardTitle>
-              <CardDescription>Resumo rápido. O clique no evento abre o popup completo.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-lg font-black text-ink">{selected.patientName}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Badge variant={statusVariant[selected.status]}>{selected.status}</Badge>
-                  <Badge variant={selected.mode === "online" ? "secondary" : "default"}>{selected.mode}</Badge>
-                  {selected.paid ? <Badge variant="success">Pago</Badge> : <Badge variant="warning">Pagamento pendente</Badge>}
+          {selected ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Detalhes da sessao</CardTitle>
+                <CardDescription>Resumo rapido. O clique no evento abre o popup completo.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="text-lg font-black text-ink">{selected.patientName}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Badge variant={statusVariant[selected.status]}>{selected.status}</Badge>
+                    <Badge variant={selected.mode === "online" ? "secondary" : "default"}>{selected.mode}</Badge>
+                    {selected.paid ? <Badge variant="success">Pago</Badge> : <Badge variant="warning">Pagamento pendente</Badge>}
+                  </div>
                 </div>
-              </div>
-              <div className="space-y-3 text-sm text-ink">
-                <div className="flex gap-3"><Clock className="h-5 w-5 text-primary" /><span>{new Date(selected.start).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })} até {new Date(selected.end).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span></div>
-                <div className="flex gap-3"><MapPin className="h-5 w-5 text-primary" /><span>{selected.room}</span></div>
-                <div className="flex gap-3"><Repeat className="h-5 w-5 text-primary" /><span>Recorrência semanal disponível</span></div>
-              </div>
-              <div className="grid gap-2">
-                <Button type="button" onClick={() => updateSelected({ status: "realizada" }, "Presença confirmada e sessão marcada como realizada.")}><UserCheck className="h-4 w-4" />Confirmar presença</Button>
-                <Button type="button" variant="outline" onClick={() => updateSelected({ paid: true }, "Pagamento registrado sem sair da agenda.")}><CreditCard className="h-4 w-4" />Registrar pagamento</Button>
-                <Button type="button" variant="outline" onClick={() => updateSelected({ start: "2026-07-22T10:30:00", end: "2026-07-22T11:20:00", status: "confirmada" }, "Sessão reagendada para 22/07 às 10:30.")}><CalendarCheck className="h-4 w-4" />Reagendar</Button>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="space-y-3 text-sm text-ink">
+                  <div className="flex gap-3"><Clock className="h-5 w-5 text-primary" /><span>{new Date(selected.start).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })} ate {new Date(selected.end).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span></div>
+                  <div className="flex gap-3"><MapPin className="h-5 w-5 text-primary" /><span>{selected.room}</span></div>
+                  <div className="flex gap-3"><Repeat className="h-5 w-5 text-primary" /><span>Recorrencia semanal disponivel</span></div>
+                </div>
+                <div className="grid gap-2">
+                  <Button type="button" onClick={() => updateSelected({ status: "realizada" }, "Presenca confirmada e sessao marcada como realizada.")}><UserCheck className="h-4 w-4" />Confirmar presenca</Button>
+                  <Button type="button" variant="outline" onClick={() => updateSelected({ paid: true }, "Pagamento registrado sem sair da agenda.")}><CreditCard className="h-4 w-4" />Registrar pagamento</Button>
+                  <Button type="button" variant="outline" onClick={() => updateSelected({ start: "2026-07-22T10:30:00", end: "2026-07-22T11:20:00", status: "confirmada" }, "Sessao reagendada para 22/07 as 10:30.")}><CalendarCheck className="h-4 w-4" />Reagendar</Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Detalhes da sessao</CardTitle>
+                <CardDescription>Nenhum horario selecionado ainda.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border border-border bg-background p-4 text-sm font-semibold text-ink-muted">
+                  A agenda esta limpa para a apresentacao. Clique em Nova sessao ou selecione um horario no calendario para criar o primeiro item.
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader><CardTitle>Lista de espera</CardTitle><CardDescription>Clique para encaixar um paciente.</CardDescription></CardHeader>
             <CardContent className="space-y-3">
-              {waitlist.length === 0 ? <div className="rounded-md border border-border bg-background p-3 text-sm font-semibold text-success">Lista de espera resolvida.</div> : null}
+              {waitlist.length === 0 ? <div className="rounded-md border border-border bg-background p-3 text-sm font-semibold text-ink-muted">Lista de espera vazia.</div> : null}
               {waitlist.map((item) => <button key={item} type="button" onClick={() => addFromWaitlist(item)} className="w-full rounded-md border border-border bg-background p-3 text-left text-sm font-semibold text-ink transition hover:bg-primary-soft">{item}</button>)}
             </CardContent>
           </Card>

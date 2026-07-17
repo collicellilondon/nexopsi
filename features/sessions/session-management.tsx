@@ -1,20 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  CalendarClock,
-  CheckCircle2,
-  ClipboardList,
-  FileText,
-  MessageSquareText,
-  Printer,
-  Receipt,
-  Search,
-  ShieldCheck,
-  Sparkles,
-  UserCheck,
-  Video
-} from "lucide-react";
+import { CalendarClock, CheckCircle2, ClipboardList, FileText, MessageSquareText, Printer, Receipt, Search, ShieldCheck, Sparkles, UserCheck, Video } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,76 +29,7 @@ type ClinicalSession = {
   documents: string[];
 };
 
-const initialSessions: ClinicalSession[] = [
-  {
-    id: "ses-001",
-    patient: "Marina Duarte",
-    date: "2026-07-17",
-    time: "14:00",
-    mode: "presencial",
-    status: "agendada",
-    payment: "pago",
-    value: 320,
-    focus: "Ansiedade e rotina de sono",
-    evolution: "Paciente relata melhora no inicio do sono, ainda com preocupacao antecipatoria antes de reunioes.",
-    intervention: "Reestruturacao cognitiva, respiracao diafragmatica e revisao de evidencias.",
-    task: "Registrar pensamentos automaticos em tres situacoes de ansiedade.",
-    nextPlan: "Aprofundar estrategias de enfrentamento e revisar exposicao gradual.",
-    risk: "baixo",
-    documents: ["Evolucao", "Recibo", "Plano terapeutico"]
-  },
-  {
-    id: "ses-002",
-    patient: "Caio Martins",
-    date: "2026-07-17",
-    time: "16:00",
-    mode: "online",
-    status: "em_andamento",
-    payment: "pendente",
-    value: 320,
-    focus: "Organizacao emocional e trabalho",
-    evolution: "Sessao focada em irritabilidade, limite interpessoal e planejamento semanal.",
-    intervention: "Psicoeducacao sobre janela de tolerancia, validacao emocional e plano de pausa.",
-    task: "Usar escala de 0 a 10 para monitorar tensao durante o dia.",
-    nextPlan: "Construir roteiro de comunicacao assertiva.",
-    risk: "moderado",
-    documents: ["Evolucao", "Cobranca pendente"]
-  },
-  {
-    id: "ses-003",
-    patient: "Helena Costa",
-    date: "2026-07-18",
-    time: "09:00",
-    mode: "presencial",
-    status: "realizada",
-    payment: "pago",
-    value: 350,
-    focus: "Primeira avaliacao",
-    evolution: "Coleta de historia clinica, demanda principal e expectativas para o processo terapeutico.",
-    intervention: "Entrevista inicial estruturada, contrato terapeutico e combinados de frequencia.",
-    task: "Preencher linha do tempo de eventos importantes.",
-    nextPlan: "Aplicar instrumentos de rastreio e definir objetivos terapeuticos.",
-    risk: "baixo",
-    documents: ["Anamnese", "Contrato", "Recibo"]
-  },
-  {
-    id: "ses-004",
-    patient: "Rafael Nogueira",
-    date: "2026-07-15",
-    time: "10:30",
-    mode: "online",
-    status: "faltou",
-    payment: "pendente",
-    value: 320,
-    focus: "Retorno apos pausa",
-    evolution: "Paciente nao compareceu. Contato de remarcacao pendente.",
-    intervention: "Mensagem de acompanhamento preparada pela secretaria.",
-    task: "Confirmar interesse de continuidade.",
-    nextPlan: "Remarcar ou encerrar ciclo conforme resposta.",
-    risk: "moderado",
-    documents: ["Registro de falta", "Cobranca pendente"]
-  }
-];
+const initialSessions: ClinicalSession[] = [];
 
 const statusLabel: Record<SessionStatus, string> = {
   agendada: "Agendada",
@@ -143,13 +61,18 @@ type SessionManagementProps = {
 
 export function SessionManagement({ createdCount, searchQuery = "", onNotify }: SessionManagementProps) {
   const [sessions, setSessions] = useState(initialSessions);
-  const [selectedId, setSelectedId] = useState(initialSessions[0].id);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"todas" | SessionStatus>("todas");
 
   useEffect(() => {
     setQuery(searchQuery);
   }, [searchQuery]);
+
+  useEffect(() => {
+    if (createdCount > 0) createSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createdCount]);
 
   const visibleSessions = useMemo(() => {
     const search = query.trim().toLowerCase();
@@ -160,16 +83,16 @@ export function SessionManagement({ createdCount, searchQuery = "", onNotify }: 
     });
   }, [query, sessions, statusFilter]);
 
-  const selected = sessions.find((session) => session.id === selectedId) ?? sessions[0];
+  const selected = sessions.find((session) => session.id === selectedId) ?? sessions[0] ?? null;
   const completed = sessions.filter((session) => session.status === "realizada").length;
   const pendingEvolution = sessions.filter((session) => session.status !== "realizada").length;
   const openPayments = sessions.filter((session) => session.payment === "pendente").length;
 
   function createSession() {
-    const next = sessions.length + createdCount + 1;
+    const next = sessions.length + 1;
     const session: ClinicalSession = {
       id: `ses-${Date.now()}`,
-      patient: `Paciente em teste ${next}`,
+      patient: `Paciente a definir ${next}`,
       date: "2026-07-20",
       time: "15:00",
       mode: "presencial",
@@ -190,6 +113,7 @@ export function SessionManagement({ createdCount, searchQuery = "", onNotify }: 
   }
 
   function updateSelected(patch: Partial<ClinicalSession>, message: string) {
+    if (!selected) return;
     setSessions((current) => current.map((session) => (session.id === selected.id ? { ...session, ...patch } : session)));
     onNotify(message);
   }
@@ -237,10 +161,7 @@ export function SessionManagement({ createdCount, searchQuery = "", onNotify }: 
                   key={session.id}
                   type="button"
                   onClick={() => setSelectedId(session.id)}
-                  className={cn(
-                    "w-full rounded-md border border-border bg-white p-4 text-left transition hover:border-primary/40 hover:bg-primary-soft",
-                    selected.id === session.id && "border-primary bg-primary-soft"
-                  )}
+                  className={cn("w-full rounded-md border border-border bg-white p-4 text-left transition hover:border-primary/40 hover:bg-primary-soft", selected?.id === session.id && "border-primary bg-primary-soft")}
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
@@ -255,77 +176,83 @@ export function SessionManagement({ createdCount, searchQuery = "", onNotify }: 
                   <p className="mt-3 text-sm font-semibold text-ink">{session.focus}</p>
                 </button>
               ))}
+              {visibleSessions.length === 0 ? (
+                <div className="rounded-md border border-border bg-background p-4 text-sm font-semibold text-ink-muted">
+                  Nenhuma sessao cadastrada. Clique em Nova sessao para testar o fluxo clinico.
+                </div>
+              ) : null}
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <CardTitle>{selected.patient}</CardTitle>
-                <CardDescription>{formatDate(selected.date)} as {selected.time} - {selected.mode}</CardDescription>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant={statusVariant[selected.status]}>{statusLabel[selected.status]}</Badge>
-                <Badge variant={paymentVariant[selected.payment]}>{selected.payment}</Badge>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <InfoTile icon={Sparkles} label="Foco da sessao" value={selected.focus} />
-              <InfoTile icon={ShieldCheck} label="Risco clinico" value={selected.risk} />
-              <InfoTile icon={Receipt} label="Valor" value={selected.value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} />
-              <InfoTile icon={selected.mode === "online" ? Video : UserCheck} label="Formato" value={selected.mode} />
-            </div>
-
-            <div className="grid gap-4">
-              <TextBlock title="Evolucao clinica" value={selected.evolution} onChange={(value) => updateSelected({ evolution: value }, "Evolucao clinica atualizada.")} />
-              <TextBlock title="Intervencoes e tecnicas" value={selected.intervention} onChange={(value) => updateSelected({ intervention: value }, "Intervencoes da sessao atualizadas.")} />
-              <TextBlock title="Tarefa terapeutica" value={selected.task} onChange={(value) => updateSelected({ task: value }, "Tarefa terapeutica atualizada.")} />
-              <TextBlock title="Plano para proxima sessao" value={selected.nextPlan} onChange={(value) => updateSelected({ nextPlan: value }, "Plano da proxima sessao atualizado.")} />
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <Button type="button" onClick={() => updateSelected({ status: "realizada" }, "Sessao marcada como realizada e evolucao salva.")}>
-                <CheckCircle2 className="h-4 w-4" />
-                Finalizar sessao
+        {selected ? (
+          <SessionDetail selected={selected} updateSelected={updateSelected} onNotify={onNotify} />
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Nenhuma sessao selecionada</CardTitle>
+              <CardDescription>Crie a primeira sessao para liberar evolucao, pagamento, tarefas e documentos.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button type="button" onClick={createSession}>
+                <CalendarClock className="h-4 w-4" />
+                Criar primeira sessao
               </Button>
-              <Button type="button" variant="outline" onClick={() => updateSelected({ payment: "pago" }, "Pagamento da sessao marcado como pago.")}>
-                <Receipt className="h-4 w-4" />
-                Dar baixa
-              </Button>
-              <Button type="button" variant="outline" onClick={() => onNotify("Resumo clinico preparado para impressao/PDF.")}>
-                <Printer className="h-4 w-4" />
-                Imprimir resumo
-              </Button>
-              <Button type="button" variant="outline" onClick={() => onNotify("Mensagem de lembrete enviada ao paciente.")}>
-                <MessageSquareText className="h-4 w-4" />
-                Lembrete
-              </Button>
-              <Button type="button" variant="outline" onClick={() => onNotify("Documento de evolucao gerado para esta sessao.")}>
-                <FileText className="h-4 w-4" />
-                Gerar evolucao
-              </Button>
-              <Button type="button" variant="outline" onClick={() => updateSelected({ status: "faltou" }, "Falta registrada e cobranca sinalizada.")}>
-                <ClipboardList className="h-4 w-4" />
-                Registrar falta
-              </Button>
-            </div>
-
-            <div className="rounded-md border border-border bg-background p-4">
-              <p className="text-sm font-black text-ink">Documentos vinculados</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {selected.documents.map((document) => (
-                  <Badge key={document} variant="secondary">{document}</Badge>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
+  );
+}
+
+function SessionDetail({ selected, updateSelected, onNotify }: { selected: ClinicalSession; updateSelected: (patch: Partial<ClinicalSession>, message: string) => void; onNotify: (message: string) => void }) {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <CardTitle>{selected.patient}</CardTitle>
+            <CardDescription>{formatDate(selected.date)} as {selected.time} - {selected.mode}</CardDescription>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant={statusVariant[selected.status]}>{statusLabel[selected.status]}</Badge>
+            <Badge variant={paymentVariant[selected.payment]}>{selected.payment}</Badge>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <InfoTile icon={Sparkles} label="Foco da sessao" value={selected.focus} />
+          <InfoTile icon={ShieldCheck} label="Risco clinico" value={selected.risk} />
+          <InfoTile icon={Receipt} label="Valor" value={selected.value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} />
+          <InfoTile icon={selected.mode === "online" ? Video : UserCheck} label="Formato" value={selected.mode} />
+        </div>
+
+        <div className="grid gap-4">
+          <TextBlock title="Evolucao clinica" value={selected.evolution} onChange={(value) => updateSelected({ evolution: value }, "Evolucao clinica atualizada.")} />
+          <TextBlock title="Intervencoes e tecnicas" value={selected.intervention} onChange={(value) => updateSelected({ intervention: value }, "Intervencoes da sessao atualizadas.")} />
+          <TextBlock title="Tarefa terapeutica" value={selected.task} onChange={(value) => updateSelected({ task: value }, "Tarefa terapeutica atualizada.")} />
+          <TextBlock title="Plano para proxima sessao" value={selected.nextPlan} onChange={(value) => updateSelected({ nextPlan: value }, "Plano da proxima sessao atualizado.")} />
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <Button type="button" onClick={() => updateSelected({ status: "realizada" }, "Sessao marcada como realizada e evolucao salva.")}><CheckCircle2 className="h-4 w-4" />Finalizar sessao</Button>
+          <Button type="button" variant="outline" onClick={() => updateSelected({ payment: "pago" }, "Pagamento da sessao marcado como pago.")}><Receipt className="h-4 w-4" />Dar baixa</Button>
+          <Button type="button" variant="outline" onClick={() => onNotify("Resumo clinico preparado para impressao/PDF.")}><Printer className="h-4 w-4" />Imprimir resumo</Button>
+          <Button type="button" variant="outline" onClick={() => onNotify("Mensagem de lembrete enviada ao paciente.")}><MessageSquareText className="h-4 w-4" />Lembrete</Button>
+          <Button type="button" variant="outline" onClick={() => onNotify("Documento de evolucao gerado para esta sessao.")}><FileText className="h-4 w-4" />Gerar evolucao</Button>
+          <Button type="button" variant="outline" onClick={() => updateSelected({ status: "faltou" }, "Falta registrada e cobranca sinalizada.")}><ClipboardList className="h-4 w-4" />Registrar falta</Button>
+        </div>
+
+        <div className="rounded-md border border-border bg-background p-4">
+          <p className="text-sm font-black text-ink">Documentos vinculados</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {selected.documents.map((document) => <Badge key={document} variant="secondary">{document}</Badge>)}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -363,11 +290,7 @@ function TextBlock({ title, value, onChange }: { title: string; value: string; o
   return (
     <label className="text-sm font-black text-ink">
       {title}
-      <textarea
-        className="mt-2 min-h-24 w-full rounded-md border border-border bg-white p-3 text-sm font-medium text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
+      <textarea className="mt-2 min-h-24 w-full rounded-md border border-border bg-white p-3 text-sm font-medium text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" value={value} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
 }

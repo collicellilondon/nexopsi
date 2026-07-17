@@ -60,8 +60,8 @@ export function Dashboard({ professionalName, onCreatePatient, onCreateSession, 
         </div>
         <button type="button" onClick={onCreateSession} className="rounded-md bg-white/12 p-4 text-left transition hover:bg-white/20">
           <p className="text-sm text-white/75">Proxima sessao</p>
-          <p className="mt-1 text-xl font-black">14:00</p>
-          <p className="text-sm text-white/75">Marina Duarte, presencial</p>
+          <p className="mt-1 text-xl font-black">Nenhuma hoje</p>
+          <p className="text-sm text-white/75">Clique para criar a primeira sessao</p>
         </button>
       </div>
 
@@ -91,10 +91,10 @@ export function Dashboard({ professionalName, onCreatePatient, onCreateSession, 
             <CardDescription>Resumo profissional dos pontos de atencao para hoje.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
-            <OperationalItem icon={CheckCircle2} title="Agenda sob controle" value="87%" description="Sessoes confirmadas ou realizadas no periodo." tone="success" />
-            <OperationalItem icon={ShieldCheck} title="Prontuarios em dia" value="92%" description="Registros clinicos revisados e vinculados." tone="primary" />
-            <OperationalItem icon={CalendarPlus} title="Retornos a confirmar" value="5" description="Pacientes com proxima sessao ainda sem confirmacao." tone="warning" />
-            <OperationalItem icon={ClipboardCheck} title="Documentos pendentes" value="3" description="Termos, relatorios ou evolucoes aguardando revisao." tone="danger" />
+            <OperationalItem icon={CheckCircle2} title="Agenda configurada" value="0" description="Sessoes cadastradas para acompanhamento." tone="success" />
+            <OperationalItem icon={ShieldCheck} title="Prontuarios ativos" value="0" description="Registros clinicos vinculados a pacientes." tone="primary" />
+            <OperationalItem icon={CalendarPlus} title="Retornos a confirmar" value="0" description="Pacientes com proxima sessao ainda sem confirmacao." tone="warning" />
+            <OperationalItem icon={ClipboardCheck} title="Documentos pendentes" value="0" description="Termos, relatorios ou evolucoes aguardando revisao." tone="danger" />
           </CardContent>
         </Card>
 
@@ -106,7 +106,7 @@ export function Dashboard({ professionalName, onCreatePatient, onCreateSession, 
           <CardContent className="space-y-3">
             {pendingItems.length === 0 ? (
               <div className="rounded-md border border-border bg-background p-4 text-sm font-semibold text-success">
-                Todas as pendencias clinicas foram revisadas.
+                Nenhuma pendencia clinica cadastrada.
               </div>
             ) : null}
             {pendingItems.map((item, index) => (
@@ -152,6 +152,11 @@ export function Dashboard({ professionalName, onCreatePatient, onCreateSession, 
                 <Badge variant={appointment.paid ? "success" : "warning"}>{appointment.paid ? "Pago" : "Pagamento pendente"}</Badge>
               </button>
             ))}
+            {appointments.length === 0 ? (
+              <div className="rounded-md border border-border bg-background p-4 text-sm font-semibold text-ink-muted">
+                Nenhuma sessao agendada para hoje. Use Nova sessao para comecar.
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </div>
