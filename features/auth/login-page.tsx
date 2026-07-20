@@ -16,14 +16,16 @@ import {
   LockKeyhole,
   Mail,
   MessageCircle,
+  Rocket,
   ShieldCheck,
   Sparkles,
-  WifiOff
+  WifiOff,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { loginSchema, recoverySchema, signupSchema, type LoginFormValues, type RecoveryFormValues } from "@/lib/validation/auth";
-import { sendPasswordRecovery, signInWithEmail, signInWithGoogle, signUpWithEmail } from "@/lib/auth/supabase-auth";
+import { sendPasswordRecovery, signInWithEmail, signUpWithEmail } from "@/lib/auth/supabase-auth";
 import { cn } from "@/lib/utils";
 
 type AuthState =
@@ -50,6 +52,7 @@ export function LoginPage() {
   const [authState, setAuthState] = useState<AuthState>("normal");
   const [authMode, setAuthMode] = useState<AuthMode>("signin");
   const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [salesOpen, setSalesOpen] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -120,16 +123,6 @@ export function LoginPage() {
     await sendPasswordRecovery(values.email);
     setAuthState("recovery-sent");
     setRecoveryOpen(false);
-  }
-
-  async function onGoogle() {
-    setAuthState("loading");
-    const result = await signInWithGoogle();
-    if (result.error) {
-      setAuthState("connection");
-      return;
-    }
-    setAuthState("success");
   }
 
   function handleAuthError(message: string) {
@@ -285,19 +278,22 @@ export function LoginPage() {
                   {authState !== "loading" ? <ArrowRight className="h-4 w-4" /> : null}
                 </Button>
 
-                <div className="flex items-center gap-3">
-                  <span className="h-px flex-1 bg-[#E4E7EC]" />
-                  <span className="text-xs font-bold text-[#667085]">ou continue com</span>
-                  <span className="h-px flex-1 bg-[#E4E7EC]" />
-                </div>
-
-                <Button type="button" variant="outline" className="h-12 w-full rounded-md border-[#E4E7EC] bg-white hover:bg-primary-soft" onClick={onGoogle}>
-                  <GoogleIcon />
-                  Iniciar com Google
-                </Button>
               </form>
 
-              <a href={salesWhatsAppUrl} target="_blank" rel="noreferrer" className="mt-6 flex items-center gap-3 rounded-md border border-primary/20 bg-primary-soft p-4 text-left transition hover:-translate-y-0.5 hover:border-primary/40 hover:bg-white">
+              <div className="mt-5 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setSalesOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-white px-3 py-2 text-xs font-black text-primary shadow-line transition hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary-soft"
+                >
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-white">
+                    <MessageCircle className="h-3.5 w-3.5" />
+                  </span>
+                  Conhecer a Nexopsi
+                </button>
+              </div>
+
+              <a href={salesWhatsAppUrl} target="_blank" rel="noreferrer" className="hidden">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary text-white">
                   <MessageCircle className="h-5 w-5" />
                 </span>
@@ -335,12 +331,82 @@ export function LoginPage() {
           </div>
         </div>
       ) : null}
+
+      {salesOpen ? <SalesPopup onClose={() => setSalesOpen(false)} /> : null}
     </main>
   );
 }
 
 function setSessionCookie(remember: boolean) {
   document.cookie = `nexopsi_session=auth; path=/; max-age=${remember ? 60 * 60 * 24 * 30 : 60 * 60}; samesite=lax`;
+}
+
+function SalesPopup({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 px-5 py-8 backdrop-blur-sm">
+      <div className="relative w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-[0_28px_90px_rgba(31,41,55,0.28)]">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary via-secondary to-primary" />
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-ink-muted shadow-line transition hover:bg-primary-soft hover:text-primary"
+          aria-label="Fechar apresentacao"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <div className="grid md:grid-cols-[0.95fr_1.05fr]">
+          <div className="relative overflow-hidden bg-primary px-6 py-8 text-white">
+            <div className="auth-flow-lines auth-flow-lines-a opacity-30" />
+            <div className="relative z-10">
+              <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-white/12 text-secondary ring-1 ring-white/15">
+                <Rocket className="h-7 w-7" />
+              </div>
+              <p className="mt-8 text-xs font-black uppercase tracking-[0.18em] text-white/62">Nexopsi para clinicas</p>
+              <h2 className="mt-3 text-3xl font-black leading-tight tracking-tight">
+                Seu consultorio com cara de app profissional.
+              </h2>
+              <p className="mt-4 text-sm leading-6 text-white/72">
+                Uma plataforma pronta para organizar agenda, pacientes, documentos, financeiro e relatorios em um unico lugar.
+              </p>
+            </div>
+          </div>
+
+          <div className="px-6 py-8">
+            <p className="text-sm font-black text-primary">Licenca com ativacao exclusiva</p>
+            <h3 className="mt-2 text-2xl font-black text-ink">Venda com controle, acesso com chave.</h3>
+            <p className="mt-3 text-sm leading-6 text-[#667085]">
+              O cliente fala com voce, fecha a contratacao pelo WhatsApp e recebe uma chave de ativacao para concluir o cadastro com seguranca.
+            </p>
+
+            <div className="mt-6 grid gap-3">
+              {[
+                "Agenda clinica com sessoes e status de atendimento",
+                "Cadastro completo de pacientes e prontuarios",
+                "Financeiro com mensalidades, faturas e inadimplencia",
+                "Documentos e relatorios padronizados em PDF"
+              ].map((item) => (
+                <div key={item} className="flex items-start gap-3 rounded-md border border-border bg-background px-3 py-3">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <span className="text-sm font-semibold leading-5 text-ink">{item}</span>
+                </div>
+              ))}
+            </div>
+
+            <a
+              href={salesWhatsAppUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-7 flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-black text-white transition hover:-translate-y-0.5 hover:brightness-110"
+            >
+              <MessageCircle className="h-5 w-5" />
+              Contrate agora
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function InstitutionalPanel() {
@@ -436,15 +502,4 @@ function getAuthAlert(state: AuthState) {
 
 function Spinner() {
   return <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />;
-}
-
-function GoogleIcon() {
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
-      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-      <path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z" />
-      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.3 9.14 5.38 12 5.38z" />
-    </svg>
-  );
 }

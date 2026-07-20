@@ -40,21 +40,6 @@ export async function signUpWithEmail(email: string, password: string, activatio
   }
 }
 
-export async function signInWithGoogle() {
-  try {
-    const supabase = createBrowserSupabaseClient();
-    return await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/dashboard` }
-    });
-  } catch {
-    return {
-      data: null,
-      error: { message: "Login com Google indisponivel no momento." }
-    };
-  }
-}
-
 export async function sendPasswordRecovery(email: string) {
   try {
     const supabase = createBrowserSupabaseClient();
