@@ -4,9 +4,9 @@
 
 :root {
   color-scheme: light;
-  --theme-primary: #245b68;
-  --theme-secondary: #5f9e8c;
-  --theme-bg: #f7f8fa;
+  --theme-primary: #6d48e5;
+  --theme-secondary: #8b6ff1;
+  --theme-bg: #fbfaff;
 }
 
 * {

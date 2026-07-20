@@ -58,9 +58,6 @@ export function Dashboard({ professionalName, professionalRegister, onCreatePati
         <div>
           <p className="text-sm font-semibold text-white/75">Bem-vindo a Nexopsi</p>
           <h1 className="mt-2 text-2xl font-black md:text-3xl">Olá, {getFirstName(displayName)}. Seu portal clínico está pronto.</h1>
-          <p className="mt-2 max-w-3xl text-sm text-white/78">
-            Cada perfil inicia com ambiente proprio e dados zerados. Cadastre seu registro profissional, crie pacientes, organize sessoes e gere documentos padronizados.
-          </p>
         </div>
         <button type="button" onClick={onOpenSettings} className="rounded-md bg-white/12 p-4 text-left transition hover:bg-white/20">
           <p className="text-sm text-white/75">Cadastro profissional</p>

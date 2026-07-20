@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Camera, CheckCircle2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ export type ProfessionalProfileData = {
 type ProfessionalProfileProps = {
   initialProfile: ProfessionalProfileData;
   onNotify: (message: string) => void;
-  onSave: (profile: ProfessionalProfileData) => void;
+  onSave: (profile: ProfessionalProfileData) => void | Promise<void>;
 };
 
 export function ProfessionalProfile({ initialProfile, onNotify, onSave }: ProfessionalProfileProps) {
@@ -28,15 +28,18 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave }: Profes
   const [saved, setSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    setProfile(initialProfile);
+  }, [initialProfile]);
+
   function update(field: keyof ProfessionalProfileData, value: string) {
     setProfile((current) => ({ ...current, [field]: value }));
     setSaved(false);
   }
 
-  function saveProfile() {
-    onSave(profile);
+  async function saveProfile() {
+    await onSave(profile);
     setSaved(true);
-    onNotify(`Cadastro profissional salvo para ${profile.name}.`);
   }
 
   function changePhoto(file?: File) {
@@ -64,7 +67,11 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave }: Profes
       <CardContent className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <div className="rounded-lg border border-border bg-background p-5 text-center">
           <div className="mx-auto flex h-32 w-32 items-center justify-center overflow-hidden rounded-full bg-primary-soft text-4xl font-black text-primary">
-            {profile.photoUrl ? <Image src={profile.photoUrl} alt={`Foto de ${profile.name}`} width={128} height={128} unoptimized className="h-full w-full object-cover" /> : getInitials(profile.name)}
+            {profile.photoUrl ? (
+              <Image src={profile.photoUrl} alt={`Foto de ${profile.name}`} width={128} height={128} unoptimized className="h-full w-full object-cover" />
+            ) : (
+              getInitials(profile.name)
+            )}
           </div>
           <input
             ref={fileInputRef}
@@ -77,7 +84,7 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave }: Profes
             <Camera className="h-4 w-4" />
             Alterar foto
           </Button>
-          <p className="mt-3 text-sm text-ink-muted">Foto profissional de {profile.name} para cabeçalhos e documentos.</p>
+          <p className="mt-3 text-sm text-ink-muted">Foto profissional de {profile.name || "psicólogo"} para cabeçalhos e documentos.</p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -94,7 +101,7 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave }: Profes
           {saved ? (
             <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm font-bold text-green-700 md:col-span-2">
               <CheckCircle2 className="h-4 w-4" />
-              Cadastro salvo. O cabeçalho já foi atualizado com {profile.name}.
+              Cadastro salvo. O cabeçalho já foi atualizado com {profile.name || "o psicólogo"}.
             </div>
           ) : null}
           <div className="flex justify-end md:col-span-2">
@@ -119,10 +126,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function getInitials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("") || "NX";
+  return (
+    name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "NX"
+  );
 }

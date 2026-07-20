@@ -51,6 +51,11 @@ type PhotonFeature = {
   };
 };
 
+type NominatimPlace = {
+  place_id: number;
+  display_name: string;
+};
+
 export function PatientRegistrationModal({ professionalName, onClose, onCreate }: PatientRegistrationModalProps) {
   const responsibleName = professionalName.trim() || "Profissional a definir";
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
@@ -85,33 +90,7 @@ export function PatientRegistrationModal({ professionalName, onClose, onCreate }
     const timeout = window.setTimeout(async () => {
       setIsSearchingAddress(true);
       try {
-        const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=6&lang=pt`, {
-          signal: controller.signal
-        });
-        if (!response.ok) return;
-        const payload = await response.json();
-        const suggestions: AddressSuggestion[] = ((payload.features ?? []) as PhotonFeature[])
-          .map((feature, index) => {
-            const props = feature.properties ?? {};
-            const label = [
-              props.name,
-              props.street,
-              props.housenumber,
-              props.district,
-              props.city,
-              props.state,
-              props.country,
-              props.postcode
-            ]
-              .filter(Boolean)
-              .join(", ");
-
-            return {
-              id: `${props.osm_id ?? index}-${index}`,
-              label
-            };
-          })
-          .filter((item) => item.label);
+        const suggestions = await searchAddresses(query, controller.signal);
         setAddressSuggestions(suggestions);
       } catch {
         if (!controller.signal.aborted) setAddressSuggestions([]);
@@ -177,7 +156,7 @@ export function PatientRegistrationModal({ professionalName, onClose, onCreate }
                   </div>
                 ) : null}
                 {addressSuggestions.length > 0 ? (
-                  <div className="absolute left-0 right-0 top-[calc(100%+0.35rem)] z-20 max-h-56 overflow-y-auto rounded-md border border-border bg-white p-1 shadow-[0_18px_45px_rgba(31,41,55,0.14)]">
+                  <div className="mt-2 max-h-60 overflow-y-auto rounded-md border border-border bg-white p-1 shadow-[0_18px_45px_rgba(31,41,55,0.14)]">
                     {addressSuggestions.map((suggestion) => (
                       <button
                         key={suggestion.id}
@@ -232,4 +211,41 @@ function TextField({ label, error, registration }: { label: string; error?: stri
       {error ? <p className="mt-1 text-sm font-semibold text-destructive">{error}</p> : null}
     </label>
   );
+}
+
+async function searchAddresses(query: string, signal: AbortSignal): Promise<AddressSuggestion[]> {
+  const nominatim = await fetch(
+    `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&accept-language=pt-BR&q=${encodeURIComponent(query)}`,
+    { signal }
+  );
+
+  if (nominatim.ok) {
+    const data = (await nominatim.json()) as NominatimPlace[];
+    const suggestions = data
+      .map((item) => ({
+        id: `osm-${item.place_id}`,
+        label: item.display_name
+      }))
+      .filter((item) => item.label);
+
+    if (suggestions.length > 0) return suggestions;
+  }
+
+  const photon = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=6&lang=pt`, { signal });
+  if (!photon.ok) return [];
+
+  const payload = await photon.json();
+  return ((payload.features ?? []) as PhotonFeature[])
+    .map((feature, index) => {
+      const props = feature.properties ?? {};
+      const label = [props.name, props.street, props.housenumber, props.district, props.city, props.state, props.country, props.postcode]
+        .filter(Boolean)
+        .join(", ");
+
+      return {
+        id: `${props.osm_id ?? index}-${index}`,
+        label
+      };
+    })
+    .filter((item) => item.label);
 }

@@ -203,11 +203,11 @@ export function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F8FAF9] text-ink">
+    <main className="min-h-screen bg-[#FBFAFF] text-ink">
       <div className="grid min-h-screen lg:grid-cols-[55fr_45fr]">
         <InstitutionalPanel />
 
-        <section className="flex min-h-screen flex-col bg-[#F8FAF9] px-5 py-6 sm:px-8 lg:px-12">
+        <section className="flex min-h-screen flex-col bg-[#FBFAFF] px-5 py-6 sm:px-8 lg:px-12">
           <div className="mb-8 flex items-center justify-between lg:hidden">
             <BrandMark compact />
             <span className="rounded-full bg-primary-soft px-3 py-1 text-xs font-bold text-primary">Acesso seguro</span>
@@ -376,7 +376,7 @@ export function LoginPage() {
                   {!isSignup ? (
                     <button
                       type="button"
-                      className="font-bold text-primary transition hover:text-[#173E47]"
+                      className="font-bold text-primary transition hover:text-[#5632C6]"
                       onClick={() => {
                         recoveryForm.setValue("email", form.getValues("email"));
                         setRecoveryOpen(true);
@@ -538,8 +538,8 @@ function SalesPopup({ onClose }: { onClose: () => void }) {
 
 function InstitutionalPanel() {
   return (
-    <section className="relative hidden min-h-screen overflow-hidden bg-[#173E47] px-10 py-9 text-white lg:flex lg:flex-col">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(95,158,140,0.18),transparent_32%),radial-gradient(circle_at_80%_10%,rgba(255,255,255,0.08),transparent_28%),linear-gradient(145deg,#173E47_0%,#0F2E35_100%)]" />
+    <section className="relative hidden min-h-screen overflow-hidden bg-[#24145F] px-10 py-9 text-white lg:flex lg:flex-col">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(139,111,241,0.28),transparent_32%),radial-gradient(circle_at_80%_10%,rgba(255,255,255,0.10),transparent_28%),linear-gradient(145deg,#24145F_0%,#120B31_100%)]" />
       <div className="auth-flow-lines auth-flow-lines-a" />
       <div className="auth-flow-lines auth-flow-lines-b" />
       <div className="auth-flow-grid" />

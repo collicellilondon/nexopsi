@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FileText, Plus, Settings, Stethoscope, Users, WalletCards } from "lucide-react";
 import { AppShell, type AppView, type SearchSuggestion } from "@/components/app-shell";
 import { SectionHeading } from "@/components/section-heading";
@@ -14,6 +14,7 @@ import { FinancePanel } from "@/features/finance/finance-panel";
 import { SessionManagement } from "@/features/sessions/session-management";
 import { DocumentCenter } from "@/features/documents/document-center";
 import { ProfessionalProfile, type ProfessionalProfileData } from "@/features/settings/professional-profile";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { Patient } from "@/lib/types";
 
 export function InteractiveHome() {
@@ -44,6 +45,46 @@ export function InteractiveHome() {
     [allPatients]
   );
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadProfessionalProfile() {
+      try {
+        const supabase = createBrowserSupabaseClient();
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData.user?.id;
+        if (!userId) return;
+
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("full_name, avatar_url, crp, phone")
+          .eq("id", userId)
+          .maybeSingle();
+
+        const metadata = userData.user?.user_metadata ?? {};
+        if (error || !active) return;
+
+        setProfessionalProfile({
+          name: data?.full_name ?? String(metadata.full_name ?? ""),
+          register: data?.crp ?? "",
+          email: String(metadata.email ?? userData.user?.email ?? ""),
+          phone: data?.phone ?? "",
+          specialty: String(metadata.specialty ?? "Psicologia clinica"),
+          bio: String(metadata.bio ?? ""),
+          photoUrl: data?.avatar_url ?? ""
+        });
+      } catch {
+        // O painel continua utilizavel mesmo se o Supabase estiver indisponivel.
+      }
+    }
+
+    loadProfessionalProfile();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   function notify(text: string) {
     setMessage(text);
   }
@@ -61,6 +102,49 @@ export function InteractiveHome() {
     notify(`Paciente ${patient.name} cadastrado com ficha completa.`);
     setActiveView("pacientes");
     setGlobalFilter(patient.name);
+  }
+
+  async function saveProfessionalProfile(profile: ProfessionalProfileData) {
+    setProfessionalProfile(profile);
+
+    try {
+      const supabase = createBrowserSupabaseClient();
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+      if (!userId) {
+        notify("Cadastro salvo nesta tela, mas entre novamente para gravar no Supabase.");
+        return;
+      }
+
+      const { error } = await supabase.from("profiles").upsert(
+        {
+          id: userId,
+          full_name: profile.name || "Profissional Nexopsi",
+          avatar_url: profile.photoUrl || null,
+          crp: profile.register || null,
+          phone: profile.phone || null
+        },
+        { onConflict: "id" }
+      );
+
+      if (error) {
+        notify(`Não foi possível salvar no Supabase: ${error.message}`);
+        return;
+      }
+
+      await supabase.auth.updateUser({
+        data: {
+          full_name: profile.name || "Profissional Nexopsi",
+          email: profile.email || userData.user?.email || "",
+          specialty: profile.specialty || "",
+          bio: profile.bio || ""
+        }
+      });
+
+      notify(`Cadastro profissional salvo no Supabase para ${profile.name || "profissional"}.`);
+    } catch {
+      notify("Não foi possível conectar ao Supabase para salvar o cadastro profissional.");
+    }
   }
 
   function createSession() {
@@ -282,7 +366,7 @@ export function InteractiveHome() {
         />
         <ThemeSettings onNotify={notify} />
         <div className="mt-6">
-          <ProfessionalProfile initialProfile={professionalProfile} onNotify={notify} onSave={setProfessionalProfile} />
+          <ProfessionalProfile initialProfile={professionalProfile} onNotify={notify} onSave={saveProfessionalProfile} />
         </div>
       </>
     );
