@@ -7,13 +7,14 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import listPlugin from "@fullcalendar/list";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { DateSelectArg, EventClickArg, EventDropArg } from "@fullcalendar/core";
-import { CalendarCheck, Clock, CreditCard, MapPin, Repeat, UserCheck } from "lucide-react";
+import { CalendarCheck, Clock, CreditCard, MapPin, Repeat, UserCheck, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { SessionModal } from "@/features/calendar/session-modal";
 import { appointments as initialAppointments } from "@/lib/mock-data";
-import type { Appointment, AppointmentStatus } from "@/lib/types";
+import type { Appointment, AppointmentMode, AppointmentStatus, Patient } from "@/lib/types";
 
 const statusVariant: Record<AppointmentStatus, "default" | "warning" | "success" | "destructive" | "muted"> = {
   confirmada: "default",
@@ -33,13 +34,20 @@ const statusColors: Record<AppointmentStatus, { label: string; color: string }> 
 
 type ClinicalCalendarProps = {
   createdCount: number;
+  patients?: Patient[];
   onNotify: (message: string) => void;
 };
 
-export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarProps) {
+type ScheduleDraft = {
+  start: string;
+  end: string;
+};
+
+export function ClinicalCalendar({ createdCount, patients = [], onNotify }: ClinicalCalendarProps) {
   const [items, setItems] = useState<Appointment[]>(initialAppointments);
   const [selectedId, setSelectedId] = useState<string | null>(initialAppointments[0]?.id ?? null);
   const [modalId, setModalId] = useState<string | null>(null);
+  const [scheduler, setScheduler] = useState<ScheduleDraft | null>(null);
   const [waitlist, setWaitlist] = useState<string[]>([]);
   const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null;
   const modalAppointment = items.find((item) => item.id === modalId);
@@ -48,20 +56,7 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
   useEffect(() => {
     if (createdCount === 0) return;
     const hour = 9 + createdCount;
-    const appointment: Appointment = {
-      id: `age-teste-${createdCount}`,
-      patientName: `Paciente a definir ${createdCount}`,
-      start: `2026-07-19T${String(hour).padStart(2, "0")}:00:00`,
-      end: `2026-07-19T${String(hour).padStart(2, "0")}:50:00`,
-      type: "Terapia individual",
-      mode: createdCount % 2 === 0 ? "online" : "presencial",
-      status: "pendente",
-      paid: false,
-      room: createdCount % 2 === 0 ? "Google Meet" : "Sala 1"
-    };
-    setItems((current) => [...current, appointment]);
-    setSelectedId(appointment.id);
-    setModalId(appointment.id);
+    openScheduler(`2026-07-19T${String(hour).padStart(2, "0")}:00:00`, `2026-07-19T${String(hour).padStart(2, "0")}:50:00`);
   }, [createdCount]);
 
   const events = useMemo(
@@ -77,6 +72,11 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
     [items]
   );
 
+  function openScheduler(start: string, end?: string) {
+    setScheduler({ start, end: end || addMinutes(start, 50) });
+    onNotify("Selecione o paciente cadastrado para vincular a sessão ao horário.");
+  }
+
   function handleEventClick(arg: EventClickArg) {
     setSelectedId(arg.event.id);
     setModalId(arg.event.id);
@@ -84,16 +84,47 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
   }
 
   function handleEventDrop(arg: EventDropArg) {
-    setItems((current) => current.map((appointment) => (appointment.id === arg.event.id ? { ...appointment, start: arg.event.start?.toISOString() ?? appointment.start, end: arg.event.end?.toISOString() ?? appointment.end } : appointment)));
+    setItems((current) =>
+      current.map((appointment) =>
+        appointment.id === arg.event.id
+          ? { ...appointment, start: arg.event.start?.toISOString() ?? appointment.start, end: arg.event.end?.toISOString() ?? appointment.end }
+          : appointment
+      )
+    );
     onNotify("Sessão reagendada por arrastar e soltar.");
   }
 
   function handleSelect(arg: DateSelectArg) {
-    const appointment: Appointment = { id: `age-selecao-${Date.now()}`, patientName: "Horário bloqueado", start: arg.startStr, end: arg.endStr, type: "Retorno", mode: "presencial", status: "confirmada", paid: true, room: "Bloqueio" };
+    openScheduler(arg.startStr, arg.endStr);
+  }
+
+  function createAppointmentFromScheduler(values: {
+    patientId: string;
+    type: Appointment["type"];
+    mode: AppointmentMode;
+    status: AppointmentStatus;
+    room: string;
+    paid: boolean;
+  }) {
+    if (!scheduler) return;
+    const patient = patients.find((item) => item.id === values.patientId);
+    const appointment: Appointment = {
+      id: `age-${Date.now()}`,
+      patientId: patient?.id,
+      patientName: patient?.name ?? "Paciente a definir",
+      start: scheduler.start,
+      end: scheduler.end,
+      type: values.type,
+      mode: values.mode,
+      status: values.status,
+      paid: values.paid,
+      room: values.room || (values.mode === "online" ? "Google Meet" : "Sala 1")
+    };
     setItems((current) => [...current, appointment]);
     setSelectedId(appointment.id);
     setModalId(appointment.id);
-    onNotify("Horário selecionado e bloqueado na agenda.");
+    setScheduler(null);
+    onNotify(patient ? `Sessão vinculada ao paciente ${patient.name}.` : "Sessão criada sem paciente vinculado.");
   }
 
   function updateAppointment(appointmentId: string, patch: Partial<Appointment>, message: string) {
@@ -106,19 +137,10 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
     updateAppointment(selected.id, patch, message);
   }
 
-  function createManualSession() {
-    const next = items.length + 1;
-    const appointment: Appointment = { id: `age-manual-${next}`, patientName: `Sessão avulsa ${next}`, start: "2026-07-20T15:00:00", end: "2026-07-20T15:50:00", type: "Retorno", mode: "online", status: "pendente", paid: false, room: "Google Meet" };
-    setItems((current) => [...current, appointment]);
-    setSelectedId(appointment.id);
-    setModalId(appointment.id);
-    onNotify("Nova sessão criada na agenda.");
-  }
-
   function addFromWaitlist(item: string) {
     setWaitlist((current) => current.filter((entry) => entry !== item));
-    createManualSession();
-    onNotify(`${item} encaixado em uma sessão de teste.`);
+    openScheduler("2026-07-20T15:00:00", "2026-07-20T15:50:00");
+    onNotify(`${item} pronto para encaixe em uma sessão.`);
   }
 
   return (
@@ -129,12 +151,12 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
                 <CardTitle>Agenda clínica</CardTitle>
-                <CardDescription>Clique em um horário com cliente para abrir o popup moderno com ações completas.</CardDescription>
+                <CardDescription>Clique em um horário vazio para vincular um paciente cadastrado à sessão.</CardDescription>
               </div>
               <div className="flex flex-wrap gap-2">
                 <div className="rounded-md border border-border bg-primary-soft px-3 py-2 text-sm font-bold text-primary">Cores por status do agendamento</div>
-                <Button type="button" variant="outline" size="sm" onClick={() => handleSelect({ startStr: "2026-07-21T08:00:00", endStr: "2026-07-21T09:00:00" } as DateSelectArg)}>Bloquear horário</Button>
-                <Button type="button" size="sm" onClick={createManualSession}>Nova sessão</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => openScheduler("2026-07-21T08:00:00", "2026-07-21T09:00:00")}>Bloquear horário</Button>
+                <Button type="button" size="sm" onClick={() => openScheduler("2026-07-20T15:00:00", "2026-07-20T15:50:00")}>Nova sessão</Button>
               </div>
             </div>
           </CardHeader>
@@ -165,7 +187,7 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
           <Card>
             <CardHeader>
               <CardTitle>Cores por status</CardTitle>
-              <CardDescription>A cor mostra a situacao atual de cada agendamento.</CardDescription>
+              <CardDescription>A cor mostra a situação atual de cada agendamento.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {activeLegend.map((item) => (
@@ -207,19 +229,7 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
                 </div>
               </CardContent>
             </Card>
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Detalhes da sessão</CardTitle>
-                <CardDescription>Nenhum horário selecionado ainda.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-md border border-border bg-background p-4 text-sm font-semibold text-ink-muted">
-                  A agenda está limpa para a apresentação. Clique em Nova sessão ou selecione um horário no calendário para criar o primeiro item.
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          ) : null}
 
           <Card>
             <CardHeader><CardTitle>Lista de espera</CardTitle><CardDescription>Clique para encaixar um paciente.</CardDescription></CardHeader>
@@ -230,7 +240,114 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
           </Card>
         </aside>
       </div>
+      {scheduler ? <ScheduleSessionModal draft={scheduler} patients={patients} onClose={() => setScheduler(null)} onCreate={createAppointmentFromScheduler} /> : null}
       {modalAppointment ? <SessionModal appointment={modalAppointment} onClose={() => setModalId(null)} onNotify={onNotify} onUpdate={(patch, message) => updateAppointment(modalAppointment.id, patch, message)} /> : null}
     </>
   );
+}
+
+function ScheduleSessionModal({
+  draft,
+  patients,
+  onClose,
+  onCreate
+}: {
+  draft: ScheduleDraft;
+  patients: Patient[];
+  onClose: () => void;
+  onCreate: (values: { patientId: string; type: Appointment["type"]; mode: AppointmentMode; status: AppointmentStatus; room: string; paid: boolean }) => void;
+}) {
+  const [patientId, setPatientId] = useState(patients[0]?.id ?? "");
+  const [type, setType] = useState<Appointment["type"]>("Terapia individual");
+  const [mode, setMode] = useState<AppointmentMode>("presencial");
+  const [status, setStatus] = useState<AppointmentStatus>("confirmada");
+  const [room, setRoom] = useState("Sala 1");
+  const [paid, setPaid] = useState(false);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/45 px-4 py-6 backdrop-blur-sm">
+      <Card className="w-full max-w-2xl shadow-[0_30px_90px_rgba(31,41,55,0.22)]">
+        <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-border">
+          <div>
+            <CardTitle>Agendar sessão</CardTitle>
+            <CardDescription>Vincule um paciente cadastrado ao horário selecionado.</CardDescription>
+          </div>
+          <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Fechar agendamento">
+            <X className="h-5 w-5" />
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4 p-5">
+          <div className="rounded-md border border-border bg-background p-3 text-sm font-semibold text-ink">
+            {new Date(draft.start).toLocaleString("pt-BR", { dateStyle: "full", timeStyle: "short" })} até{" "}
+            {new Date(draft.end).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+          </div>
+
+          {patients.length === 0 ? (
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
+              Nenhum paciente cadastrado ainda. Cadastre o paciente primeiro para vincular corretamente a sessão.
+            </div>
+          ) : null}
+
+          <label className="block text-sm font-bold text-ink">
+            Paciente
+            <select value={patientId} onChange={(event) => setPatientId(event.target.value)} className="mt-2 h-11 w-full rounded-md border border-border bg-white px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15">
+              {patients.length === 0 ? <option value="">Paciente a definir</option> : null}
+              {patients.map((patient) => (
+                <option key={patient.id} value={patient.id}>{patient.name} - {patient.phone}</option>
+              ))}
+            </select>
+          </label>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="block text-sm font-bold text-ink">
+              Tipo de sessão
+              <select value={type} onChange={(event) => setType(event.target.value as Appointment["type"])} className="mt-2 h-11 w-full rounded-md border border-border bg-white px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15">
+                <option>Terapia individual</option>
+                <option>Avaliação</option>
+                <option>Retorno</option>
+                <option>Supervisão</option>
+              </select>
+            </label>
+            <label className="block text-sm font-bold text-ink">
+              Status
+              <select value={status} onChange={(event) => setStatus(event.target.value as AppointmentStatus)} className="mt-2 h-11 w-full rounded-md border border-border bg-white px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15">
+                <option value="confirmada">Confirmada</option>
+                <option value="pendente">Pendente</option>
+                <option value="realizada">Realizada</option>
+                <option value="faltou">Faltou</option>
+                <option value="cancelada">Cancelada</option>
+              </select>
+            </label>
+            <label className="block text-sm font-bold text-ink">
+              Modalidade
+              <select value={mode} onChange={(event) => setMode(event.target.value as AppointmentMode)} className="mt-2 h-11 w-full rounded-md border border-border bg-white px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15">
+                <option value="presencial">Presencial</option>
+                <option value="online">Online</option>
+              </select>
+            </label>
+            <label className="block text-sm font-bold text-ink">
+              Sala ou link
+              <Input value={room} onChange={(event) => setRoom(event.target.value)} className="mt-2" placeholder="Sala 1 ou link da chamada" />
+            </label>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm font-bold text-ink">
+            <input type="checkbox" checked={paid} onChange={(event) => setPaid(event.target.checked)} className="h-4 w-4 rounded border-border accent-primary" />
+            Pagamento já realizado
+          </label>
+
+          <div className="flex justify-end gap-3 border-t border-border pt-4">
+            <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button type="button" onClick={() => onCreate({ patientId, type, mode, status, room, paid })}>Salvar sessão</Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function addMinutes(value: string, minutes: number) {
+  const date = new Date(value);
+  date.setMinutes(date.getMinutes() + minutes);
+  return date.toISOString();
 }

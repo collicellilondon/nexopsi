@@ -27,6 +27,7 @@ export type Patient = {
 
 export type Appointment = {
   id: string;
+  patientId?: string;
   patientName: string;
   start: string;
   end: string;

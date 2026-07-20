@@ -113,7 +113,7 @@ export default function HomePage() {
           <div className="relative z-10 max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#245b68]/15 bg-white/86 px-4 py-2 text-sm font-black text-primary shadow-[0_12px_32px_rgba(31,41,55,0.08)]">
               <Sparkles className="h-4 w-4 text-[#c56b43]" />
-              SaaS profissional para psicólogas independentes
+              SaaS profissional para psicólogos independentes
             </div>
             <h1 className="mt-7 max-w-4xl text-4xl font-black leading-[1.02] text-ink md:text-6xl xl:text-7xl">
               Nexopsi organiza a clínica e transforma atendimento em gestão.
@@ -367,7 +367,7 @@ export default function HomePage() {
 
       <footer className="border-t border-border bg-[#fbfbf8] py-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 text-sm font-semibold text-ink-muted md:flex-row md:items-center md:justify-between md:px-6">
-          <p>Nexopsi - gestão clínica para psicólogas</p>
+          <p>Nexopsi - gestão clínica para psicólogos</p>
           <p>Criado por <span className="font-black text-primary">ColliDev</span></p>
         </div>
       </footer>

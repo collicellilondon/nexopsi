@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Nexopsi | Gestão para psicólogas",
+  title: "Nexopsi | Gestão para psicólogos",
   description: "Plataforma SaaS moderna para gestão clínica, agenda, prontuário, documentos e financeiro."
 };
 

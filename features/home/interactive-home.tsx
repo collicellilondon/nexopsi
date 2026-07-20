@@ -136,7 +136,7 @@ export function InteractiveHome() {
       return;
     }
 
-    if (includesAny(normalized, ["configuracao", "config", "tema", "psicologa", "cadastro", "foto", "logo", "crp", "registro"])) {
+    if (includesAny(normalized, ["configuracao", "config", "tema", "psicologo", "cadastro", "foto", "logo", "crp", "registro"])) {
       setActiveView("configuracoes");
       setGlobalFilter("");
       notify(`Configurações abertas para "${query}".`);
@@ -192,7 +192,7 @@ export function InteractiveHome() {
             icon={<Plus className="h-4 w-4" />}
             onAction={createSession}
           />
-          <ClinicalCalendar createdCount={sessionSeed} onNotify={notify} />
+          <ClinicalCalendar createdCount={sessionSeed} patients={patients} onNotify={notify} />
         </>
       );
     }

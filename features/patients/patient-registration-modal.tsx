@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { X } from "lucide-react";
+import { MapPin, Search, X } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,8 +32,29 @@ type PatientRegistrationModalProps = {
   onCreate: (patient: Patient) => void;
 };
 
+type AddressSuggestion = {
+  id: string;
+  label: string;
+};
+
+type PhotonFeature = {
+  properties?: {
+    osm_id?: string | number;
+    name?: string;
+    street?: string;
+    housenumber?: string;
+    district?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postcode?: string;
+  };
+};
+
 export function PatientRegistrationModal({ professionalName, onClose, onCreate }: PatientRegistrationModalProps) {
   const responsibleName = professionalName.trim() || "Profissional a definir";
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -50,6 +72,59 @@ export function PatientRegistrationModal({ professionalName, onClose, onCreate }
       clinicalNotes: ""
     }
   });
+  const addressValue = form.watch("address");
+
+  useEffect(() => {
+    const query = addressValue.trim();
+    if (query.length < 5) {
+      setAddressSuggestions([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setIsSearchingAddress(true);
+      try {
+        const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=6&lang=pt`, {
+          signal: controller.signal
+        });
+        if (!response.ok) return;
+        const payload = await response.json();
+        const suggestions: AddressSuggestion[] = ((payload.features ?? []) as PhotonFeature[])
+          .map((feature, index) => {
+            const props = feature.properties ?? {};
+            const label = [
+              props.name,
+              props.street,
+              props.housenumber,
+              props.district,
+              props.city,
+              props.state,
+              props.country,
+              props.postcode
+            ]
+              .filter(Boolean)
+              .join(", ");
+
+            return {
+              id: `${props.osm_id ?? index}-${index}`,
+              label
+            };
+          })
+          .filter((item) => item.label);
+        setAddressSuggestions(suggestions);
+      } catch {
+        if (!controller.signal.aborted) setAddressSuggestions([]);
+      } finally {
+        if (!controller.signal.aborted) setIsSearchingAddress(false);
+      }
+    }, 420);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [addressValue]);
 
   function submit(values: FormValues) {
     const birthYear = Number(values.birthDate.slice(0, 4));
@@ -89,11 +164,44 @@ export function PatientRegistrationModal({ professionalName, onClose, onCreate }
           <Field label="Telefone / WhatsApp" error={form.formState.errors.phone?.message}><Input {...form.register("phone")} /></Field>
           <Field label="Data de nascimento" error={form.formState.errors.birthDate?.message}><Input type="date" {...form.register("birthDate")} /></Field>
           <Field label="Profissão" error={form.formState.errors.occupation?.message}><Input {...form.register("occupation")} /></Field>
-          <div className="md:col-span-2"><Field label="Endereço completo" error={form.formState.errors.address?.message}><Input {...form.register("address")} placeholder="Rua, número, bairro, cidade, UF, CEP" /></Field></div>
+
+          <div className="md:col-span-2">
+            <Field label="Endereço completo" error={form.formState.errors.address?.message}>
+              <div className="relative">
+                <MapPin className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-ink-muted" />
+                <Input {...form.register("address")} placeholder="Rua, número, bairro, cidade, UF, CEP" autoComplete="street-address" className="pl-9" />
+                {isSearchingAddress ? (
+                  <div className="mt-2 flex items-center gap-2 text-xs font-semibold text-ink-muted">
+                    <Search className="h-3.5 w-3.5 animate-pulse" />
+                    Buscando endereços...
+                  </div>
+                ) : null}
+                {addressSuggestions.length > 0 ? (
+                  <div className="absolute left-0 right-0 top-[calc(100%+0.35rem)] z-20 max-h-56 overflow-y-auto rounded-md border border-border bg-white p-1 shadow-[0_18px_45px_rgba(31,41,55,0.14)]">
+                    {addressSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion.id}
+                        type="button"
+                        className="w-full rounded-sm px-3 py-2 text-left text-sm font-semibold text-ink transition hover:bg-primary-soft hover:text-primary"
+                        onClick={() => {
+                          form.setValue("address", suggestion.label, { shouldDirty: true, shouldValidate: true });
+                          setAddressSuggestions([]);
+                        }}
+                      >
+                        {suggestion.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <p className="mt-2 text-xs font-semibold text-ink-muted">Digite o endereço e escolha uma sugestão da base mundial quando aparecer.</p>
+            </Field>
+          </div>
+
           <Field label="Contato de emergência" error={form.formState.errors.emergencyContact?.message}><Input {...form.register("emergencyContact")} /></Field>
           <Field label="Responsável legal" error={form.formState.errors.guardian?.message}><Input {...form.register("guardian")} placeholder="Quando aplicável" /></Field>
           <Field label="Origem do encaminhamento" error={form.formState.errors.referralSource?.message}><Input {...form.register("referralSource")} /></Field>
-          <Field label="Psicóloga responsável"><Input value={responsibleName} readOnly /></Field>
+          <Field label="Psicólogo responsável"><Input value={responsibleName} readOnly /></Field>
           <div className="md:col-span-2"><TextField label="Queixa principal" error={form.formState.errors.mainComplaint?.message} registration={form.register("mainComplaint")} /></div>
           <div className="md:col-span-2"><TextField label="Observações clínicas iniciais" registration={form.register("clinicalNotes")} /></div>
           <div className="flex justify-end gap-3 border-t border-border pt-4 md:col-span-2">

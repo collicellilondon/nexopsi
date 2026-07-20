@@ -58,7 +58,7 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave }: Profes
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Cadastro da psicóloga</CardTitle>
+        <CardTitle>Cadastro do psicólogo</CardTitle>
         <CardDescription>Informações usadas em documentos, recibos, prontuários e relatórios.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6 lg:grid-cols-[280px_1fr]">
