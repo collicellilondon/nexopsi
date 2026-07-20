@@ -60,6 +60,7 @@ export function PatientRegistrationModal({ professionalName, onClose, onCreate }
   const responsibleName = professionalName.trim() || "Profissional a definir";
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState("");
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -78,11 +79,13 @@ export function PatientRegistrationModal({ professionalName, onClose, onCreate }
     }
   });
   const addressValue = form.watch("address");
+  const addressRegistration = form.register("address");
 
   useEffect(() => {
     const query = addressValue.trim();
-    if (query.length < 5) {
+    if (query.length < 5 || query === selectedAddress) {
       setAddressSuggestions([]);
+      setIsSearchingAddress(false);
       return;
     }
 
@@ -90,7 +93,7 @@ export function PatientRegistrationModal({ professionalName, onClose, onCreate }
     const timeout = window.setTimeout(async () => {
       setIsSearchingAddress(true);
       try {
-        const suggestions = await searchAddresses(query, controller.signal);
+        const suggestions = await searchAddresses(normalizeAddressQuery(query), controller.signal);
         setAddressSuggestions(suggestions);
       } catch {
         if (!controller.signal.aborted) setAddressSuggestions([]);
@@ -103,7 +106,7 @@ export function PatientRegistrationModal({ professionalName, onClose, onCreate }
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [addressValue]);
+  }, [addressValue, selectedAddress]);
 
   function submit(values: FormValues) {
     const birthYear = Number(values.birthDate.slice(0, 4));
@@ -148,7 +151,18 @@ export function PatientRegistrationModal({ professionalName, onClose, onCreate }
             <Field label="Endereço completo" error={form.formState.errors.address?.message}>
               <div className="relative">
                 <MapPin className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-ink-muted" />
-                <Input {...form.register("address")} placeholder="Rua, número, bairro, cidade, UF, CEP" autoComplete="street-address" className="pl-9" />
+                <Input
+                  {...addressRegistration}
+                  onChange={(event) => {
+                    addressRegistration.onChange(event);
+                    if (selectedAddress && event.target.value !== selectedAddress) {
+                      setSelectedAddress("");
+                    }
+                  }}
+                  placeholder="Rua, número, bairro, cidade, UF, CEP"
+                  autoComplete="street-address"
+                  className="pl-9"
+                />
                 {isSearchingAddress ? (
                   <div className="mt-2 flex items-center gap-2 text-xs font-semibold text-ink-muted">
                     <Search className="h-3.5 w-3.5 animate-pulse" />
@@ -164,7 +178,9 @@ export function PatientRegistrationModal({ professionalName, onClose, onCreate }
                         className="w-full rounded-sm px-3 py-2 text-left text-sm font-semibold text-ink transition hover:bg-primary-soft hover:text-primary"
                         onClick={() => {
                           form.setValue("address", suggestion.label, { shouldDirty: true, shouldValidate: true });
+                          setSelectedAddress(suggestion.label);
                           setAddressSuggestions([]);
+                          setIsSearchingAddress(false);
                         }}
                       >
                         {suggestion.label}
@@ -248,4 +264,12 @@ async function searchAddresses(query: string, signal: AbortSignal): Promise<Addr
       };
     })
     .filter((item) => item.label);
+}
+
+function normalizeAddressQuery(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
