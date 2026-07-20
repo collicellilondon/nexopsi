@@ -41,7 +41,12 @@ export async function POST(request: Request) {
     email,
     password,
     options: {
-      emailRedirectTo: origin ? `${origin}/dashboard` : undefined
+      emailRedirectTo: origin ? `${origin}/dashboard` : undefined,
+      data: {
+        app_name: "Nexopsi",
+        activation_status: "validated",
+        created_by: "ColliDev"
+      }
     }
   });
 
