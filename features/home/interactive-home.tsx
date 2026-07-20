@@ -66,12 +66,12 @@ export function InteractiveHome() {
 
         setProfessionalProfile({
           name: data?.full_name ?? String(metadata.full_name ?? ""),
-          register: data?.crp ?? "",
+          register: data?.crp ?? String(metadata.crp ?? ""),
           email: String(metadata.email ?? userData.user?.email ?? ""),
-          phone: data?.phone ?? "",
+          phone: data?.phone ?? String(metadata.phone ?? ""),
           specialty: String(metadata.specialty ?? "Psicologia clinica"),
           bio: String(metadata.bio ?? ""),
-          photoUrl: data?.avatar_url ?? ""
+          photoUrl: data?.avatar_url ?? String(metadata.avatar_url ?? "")
         });
       } catch {
         // O painel continua utilizavel mesmo se o Supabase estiver indisponivel.
@@ -127,19 +127,27 @@ export function InteractiveHome() {
         { onConflict: "id" }
       );
 
-      if (error) {
-        notify(`Não foi possível salvar no Supabase: ${error.message}`);
-        return;
-      }
-
-      await supabase.auth.updateUser({
+      const metadataResult = await supabase.auth.updateUser({
         data: {
           full_name: profile.name || "Profissional Nexopsi",
+          avatar_url: profile.photoUrl || "",
+          crp: profile.register || "",
+          phone: profile.phone || "",
           email: profile.email || userData.user?.email || "",
           specialty: profile.specialty || "",
           bio: profile.bio || ""
         }
       });
+
+      if (metadataResult.error) {
+        notify(`Não foi possível salvar no Supabase: ${metadataResult.error.message}`);
+        return;
+      }
+
+      if (error) {
+        notify("Cadastro salvo no Supabase. A tabela de perfis precisa receber a migração para gravar a ficha completa.");
+        return;
+      }
 
       notify(`Cadastro profissional salvo no Supabase para ${profile.name || "profissional"}.`);
     } catch {
