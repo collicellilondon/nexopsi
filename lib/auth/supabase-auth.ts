@@ -7,7 +7,25 @@ export async function signInWithEmail(email: string, password: string) {
   } catch {
     return {
       data: null,
-      error: { message: "Supabase não configurado. Usando autenticação demonstrativa." }
+      error: { message: "Supabase não configurado. Verifique as variáveis de ambiente." }
+    };
+  }
+}
+
+export async function signUpWithEmail(email: string, password: string) {
+  try {
+    const supabase = createBrowserSupabaseClient();
+    return await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/dashboard`
+      }
+    });
+  } catch {
+    return {
+      data: null,
+      error: { message: "Não foi possível criar a conta agora." }
     };
   }
 }
@@ -22,7 +40,7 @@ export async function signInWithGoogle() {
   } catch {
     return {
       data: null,
-      error: { message: "Login Google preparado para Supabase Auth." }
+      error: { message: "Login com Google indisponível no momento." }
     };
   }
 }

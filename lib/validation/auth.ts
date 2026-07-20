@@ -6,9 +6,16 @@ export const loginSchema = z.object({
   remember: z.boolean().default(true)
 });
 
+export const signupSchema = z.object({
+  email: z.string().min(1, "Digite seu e-mail.").email("Informe um endereço de e-mail válido."),
+  password: z.string().min(8, "Use pelo menos 8 caracteres."),
+  remember: z.boolean().default(true)
+});
+
 export const recoverySchema = z.object({
   email: z.string().min(1, "Digite seu e-mail.").email("Informe um endereço de e-mail válido.")
 });
 
 export type LoginFormValues = z.infer<typeof loginSchema>;
+export type SignupFormValues = z.infer<typeof signupSchema>;
 export type RecoveryFormValues = z.infer<typeof recoverySchema>;

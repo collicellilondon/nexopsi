@@ -14,14 +14,15 @@ import {
   HeartHandshake,
   LockKeyhole,
   Mail,
+  MessageCircle,
   ShieldCheck,
   Sparkles,
   WifiOff
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { loginSchema, recoverySchema, type LoginFormValues, type RecoveryFormValues } from "@/lib/validation/auth";
-import { sendPasswordRecovery, signInWithEmail, signInWithGoogle } from "@/lib/auth/supabase-auth";
+import { loginSchema, recoverySchema, signupSchema, type LoginFormValues, type RecoveryFormValues } from "@/lib/validation/auth";
+import { sendPasswordRecovery, signInWithEmail, signInWithGoogle, signUpWithEmail } from "@/lib/auth/supabase-auth";
 import { cn } from "@/lib/utils";
 
 type AuthState =
@@ -32,10 +33,13 @@ type AuthState =
   | "disabled"
   | "unconfirmed"
   | "success"
+  | "signup-sent"
   | "recovery-sent";
 
-const demoEmail = "demo@nexopsi.com";
-const demoPassword = "nexopsi123";
+type AuthMode = "signin" | "signup";
+
+const salesMessage = "Olá, quero contratar a Nexopsi para minha clínica.";
+const salesWhatsAppUrl = process.env.NEXT_PUBLIC_SALES_WHATSAPP_URL || `https://wa.me/?text=${encodeURIComponent(salesMessage)}`;
 
 export function LoginPage() {
   const router = useRouter();
@@ -43,6 +47,7 @@ export function LoginPage() {
   const returnTo = searchParams.get("returnTo") || "/dashboard";
   const [showPassword, setShowPassword] = useState(false);
   const [authState, setAuthState] = useState<AuthState>("normal");
+  const [authMode, setAuthMode] = useState<AuthMode>("signin");
   const [recoveryOpen, setRecoveryOpen] = useState(false);
 
   const form = useForm<LoginFormValues>({
@@ -56,32 +61,45 @@ export function LoginPage() {
   });
 
   const alert = useMemo(() => getAuthAlert(authState), [authState]);
+  const isSignup = authMode === "signup";
 
   async function onSubmit(values: LoginFormValues) {
     setAuthState("loading");
-    const isDemo = values.email.toLowerCase() === demoEmail && values.password === demoPassword;
 
-    if (isDemo) {
-      await new Promise((resolve) => setTimeout(resolve, 650));
-      document.cookie = `nexopsi_session=demo; path=/; max-age=${values.remember ? 60 * 60 * 24 * 30 : 60 * 60}; samesite=lax`;
-      setAuthState("success");
-      setTimeout(() => router.push(returnTo), 650);
+    if (isSignup) {
+      const parsed = signupSchema.safeParse(values);
+      if (!parsed.success) {
+        form.setError("password", { message: parsed.error.flatten().fieldErrors.password?.[0] ?? "Revise os dados do cadastro." });
+        setAuthState("normal");
+        return;
+      }
+
+      const result = await signUpWithEmail(values.email, values.password);
+      if (!result.error) {
+        if (result.data?.session) {
+          setSessionCookie(values.remember);
+          setAuthState("success");
+          setTimeout(() => router.push(returnTo), 650);
+          return;
+        }
+
+        setAuthState("signup-sent");
+        return;
+      }
+
+      handleAuthError(result.error.message);
       return;
     }
 
     const result = await signInWithEmail(values.email, values.password);
     if (!result.error) {
-      document.cookie = `nexopsi_session=demo; path=/; max-age=${values.remember ? 60 * 60 * 24 * 30 : 60 * 60}; samesite=lax`;
+      setSessionCookie(values.remember);
       setAuthState("success");
       setTimeout(() => router.push(returnTo), 650);
       return;
     }
 
-    const message = result.error.message.toLowerCase();
-    if (message.includes("disabled")) setAuthState("disabled");
-    else if (message.includes("confirm")) setAuthState("unconfirmed");
-    else if (message.includes("network") || message.includes("fetch")) setAuthState("connection");
-    else setAuthState("invalid");
+    handleAuthError(result.error.message);
   }
 
   async function onRecovery(values: RecoveryFormValues) {
@@ -100,6 +118,20 @@ export function LoginPage() {
     setAuthState("success");
   }
 
+  function handleAuthError(message: string) {
+    const normalized = message.toLowerCase();
+    if (normalized.includes("disabled")) setAuthState("disabled");
+    else if (normalized.includes("confirm")) setAuthState("unconfirmed");
+    else if (normalized.includes("network") || normalized.includes("fetch") || normalized.includes("supabase")) setAuthState("connection");
+    else setAuthState("invalid");
+  }
+
+  function switchMode(mode: AuthMode) {
+    setAuthMode(mode);
+    setAuthState("normal");
+    form.clearErrors();
+  }
+
   return (
     <main className="min-h-screen bg-[#F8FAF9] text-ink">
       <div className="grid min-h-screen lg:grid-cols-[55fr_45fr]">
@@ -115,17 +147,21 @@ export function LoginPage() {
             <div className="w-full max-w-[430px] animate-[authEnter_520ms_ease-out]">
               <div className="mb-8">
                 <div className="mb-6 flex h-24 w-72 items-center overflow-hidden rounded-md bg-white">
-                  <Image
-                    src="/brand/nexopsi-logo.png"
-                    alt="Nexopsi"
-                    width={320}
-                    height={160}
-                    priority
-                    className="h-full w-full object-contain"
-                  />
+                  <Image src="/brand/nexopsi-logo.png" alt="Nexopsi" width={320} height={160} priority className="h-full w-full object-contain" />
                 </div>
-                <h1 className="mt-3 text-3xl font-black tracking-tight text-ink">Bem-vindo de volta</h1>
-                <p className="mt-2 text-sm leading-6 text-[#667085]">Entre para continuar cuidando da sua clínica.</p>
+                <h1 className="mt-3 text-3xl font-black tracking-tight text-ink">{isSignup ? "Crie seu acesso" : "Bem-vindo de volta"}</h1>
+                <p className="mt-2 text-sm leading-6 text-[#667085]">
+                  {isSignup ? "Cadastre seu e-mail para iniciar a experiência Nexopsi." : "Entre para continuar cuidando da sua clínica."}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 rounded-md bg-white p-1 shadow-line">
+                <button type="button" onClick={() => switchMode("signin")} className={cn("rounded-md px-3 py-2 text-sm font-black transition", !isSignup ? "bg-primary text-white" : "text-[#667085] hover:bg-primary-soft hover:text-primary")}>
+                  Entrar
+                </button>
+                <button type="button" onClick={() => switchMode("signup")} className={cn("rounded-md px-3 py-2 text-sm font-black transition", isSignup ? "bg-primary text-white" : "text-[#667085] hover:bg-primary-soft hover:text-primary")}>
+                  Criar conta
+                </button>
               </div>
 
               {alert ? <AuthAlert state={authState} title={alert.title} description={alert.description} /> : null}
@@ -153,8 +189,8 @@ export function LoginPage() {
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      autoComplete="current-password"
-                      placeholder="Sua senha"
+                      autoComplete={isSignup ? "new-password" : "current-password"}
+                      placeholder={isSignup ? "Crie uma senha segura" : "Sua senha"}
                       className="h-12 rounded-md border-[#E4E7EC] px-10"
                       aria-invalid={Boolean(form.formState.errors.password)}
                       aria-describedby={form.formState.errors.password ? "password-error" : undefined}
@@ -173,32 +209,26 @@ export function LoginPage() {
 
                 <div className="flex items-center justify-between gap-3 text-sm">
                   <label className="flex items-center gap-2 font-semibold text-[#667085]">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-[#E4E7EC] accent-primary"
-                      {...form.register("remember")}
-                    />
+                    <input type="checkbox" className="h-4 w-4 rounded border-[#E4E7EC] accent-primary" {...form.register("remember")} />
                     Manter-me conectado
                   </label>
-                  <button
-                    type="button"
-                    className="font-bold text-primary transition hover:text-[#173E47]"
-                    onClick={() => {
-                      recoveryForm.setValue("email", form.getValues("email"));
-                      setRecoveryOpen(true);
-                    }}
-                  >
-                    Esqueci minha senha
-                  </button>
+                  {!isSignup ? (
+                    <button
+                      type="button"
+                      className="font-bold text-primary transition hover:text-[#173E47]"
+                      onClick={() => {
+                        recoveryForm.setValue("email", form.getValues("email"));
+                        setRecoveryOpen(true);
+                      }}
+                    >
+                      Esqueci minha senha
+                    </button>
+                  ) : null}
                 </div>
 
-                <Button
-                  type="submit"
-                  disabled={authState === "loading"}
-                  className="h-12 w-full rounded-md bg-primary text-base transition duration-200 hover:-translate-y-0.5 hover:brightness-110"
-                >
+                <Button type="submit" disabled={authState === "loading"} className="h-12 w-full rounded-md bg-primary text-base transition duration-200 hover:-translate-y-0.5 hover:brightness-110">
                   {authState === "loading" ? <Spinner /> : null}
-                  {authState === "loading" ? "Entrando..." : "Entrar na plataforma"}
+                  {authState === "loading" ? "Processando..." : isSignup ? "Criar conta" : "Entrar na plataforma"}
                   {authState !== "loading" ? <ArrowRight className="h-4 w-4" /> : null}
                 </Button>
 
@@ -210,19 +240,21 @@ export function LoginPage() {
 
                 <Button type="button" variant="outline" className="h-12 w-full rounded-md border-[#E4E7EC] bg-white hover:bg-primary-soft" onClick={onGoogle}>
                   <GoogleIcon />
-                  Continuar com Google
+                  Iniciar com Google
                 </Button>
               </form>
 
-              <div className="mt-6 text-center text-sm text-[#667085]">
-                Ainda não possui uma conta?{" "}
-                <button type="button" className="font-black text-primary hover:text-[#173E47]" onClick={() => setAuthState("success")}>
-                  Solicite uma demonstração
-                </button>
-              </div>
+              <a href={salesWhatsAppUrl} target="_blank" rel="noreferrer" className="mt-6 flex items-center gap-3 rounded-md border border-primary/20 bg-primary-soft p-4 text-left transition hover:-translate-y-0.5 hover:border-primary/40 hover:bg-white">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary text-white">
+                  <MessageCircle className="h-5 w-5" />
+                </span>
+                <span>
+                  <span className="block text-sm font-black text-primary">Quero contratar a Nexopsi</span>
+                  <span className="mt-1 block text-xs font-semibold leading-5 text-[#667085]">Fale no WhatsApp e comece com uma conta nova para sua clínica.</span>
+                </span>
+              </a>
 
               <p className="mt-8 text-center text-xs font-semibold text-[#667085]">Privacidade · Termos de uso · Suporte</p>
-              <p className="mt-3 text-center text-xs text-[#667085]">Demo: {demoEmail} / {demoPassword}</p>
             </div>
           </div>
         </section>
@@ -231,15 +263,17 @@ export function LoginPage() {
       {recoveryOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/45 px-5 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-[0_24px_80px_rgba(31,41,55,0.22)]">
-            <h2 className="text-xl font-black text-ink">Recuperar senha</h2>
-            <p className="mt-2 text-sm leading-6 text-[#667085]">Informe seu e-mail e enviaremos as instruções de recuperação.</p>
+            <h2 className="text-xl font-black text-ink">Redefinir senha</h2>
+            <p className="mt-2 text-sm leading-6 text-[#667085]">
+              Informe o e-mail cadastrado. Você receberá uma mensagem com um link seguro para criar uma nova senha. Se não encontrar o e-mail em alguns minutos, verifique a caixa de spam.
+            </p>
             <form className="mt-5 space-y-4" onSubmit={recoveryForm.handleSubmit(onRecovery)} noValidate>
               <Field label="E-mail" error={recoveryForm.formState.errors.email?.message} htmlFor="recovery-email">
                 <Input id="recovery-email" type="email" autoComplete="email" placeholder="contato@clinica.com" className="h-12" {...recoveryForm.register("email")} />
               </Field>
               <div className="grid gap-2 sm:grid-cols-2">
                 <Button type="button" variant="outline" onClick={() => setRecoveryOpen(false)}>Cancelar</Button>
-                <Button type="submit">Enviar instruções</Button>
+                <Button type="submit">Enviar link seguro</Button>
               </div>
             </form>
           </div>
@@ -247,6 +281,10 @@ export function LoginPage() {
       ) : null}
     </main>
   );
+}
+
+function setSessionCookie(remember: boolean) {
+  document.cookie = `nexopsi_session=auth; path=/; max-age=${remember ? 60 * 60 * 24 * 30 : 60 * 60}; samesite=lax`;
 }
 
 function InstitutionalPanel() {
@@ -285,14 +323,7 @@ function BrandMark({ compact = false }: { compact?: boolean }) {
   return (
     <div className="flex items-center gap-3">
       <div className={cn("flex items-center justify-center overflow-hidden rounded-md bg-white", compact ? "h-14 w-44" : "h-16 w-56")}>
-        <Image
-          src="/brand/nexopsi-logo.png"
-          alt="Nexopsi"
-          width={260}
-          height={130}
-          priority={compact}
-          className="h-full w-full object-contain"
-        />
+        <Image src="/brand/nexopsi-logo.png" alt="Nexopsi" width={260} height={130} priority={compact} className="h-full w-full object-contain" />
       </div>
     </div>
   );
@@ -318,10 +349,10 @@ function Field({ label, error, htmlFor, children }: { label: string; error?: str
 }
 
 function AuthAlert({ state, title, description }: { state: AuthState; title: string; description: string }) {
-  const positive = state === "success" || state === "recovery-sent";
+  const positive = state === "success" || state === "recovery-sent" || state === "signup-sent";
   const connection = state === "connection";
   return (
-    <div className={cn("flex gap-3 rounded-md border p-3 text-sm", positive ? "border-emerald-200 bg-emerald-50 text-[#176B4D]" : "border-red-100 bg-red-50 text-[#9F2F2F]")}>
+    <div className={cn("mt-4 flex gap-3 rounded-md border p-3 text-sm", positive ? "border-emerald-200 bg-emerald-50 text-[#176B4D]" : "border-red-100 bg-red-50 text-[#9F2F2F]")}>
       {positive ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : connection ? <WifiOff className="mt-0.5 h-4 w-4 shrink-0" /> : <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />}
       <div>
         <p className="font-black">{title}</p>
@@ -333,12 +364,13 @@ function AuthAlert({ state, title, description }: { state: AuthState; title: str
 
 function getAuthAlert(state: AuthState) {
   const alerts: Partial<Record<AuthState, { title: string; description: string }>> = {
-    invalid: { title: "Não foi possível entrar", description: "E-mail ou senha incorretos." },
-    connection: { title: "Conexão indisponível", description: "Tente novamente em instantes." },
+    invalid: { title: "Não foi possível continuar", description: "Revise o e-mail e a senha informados." },
+    connection: { title: "Conexão indisponível", description: "Tente novamente em instantes ou verifique a configuração do Supabase." },
     disabled: { title: "Conta desativada", description: "Entre em contato com o suporte da clínica." },
     unconfirmed: { title: "E-mail não confirmado", description: "Confirme seu e-mail antes de acessar." },
     success: { title: "Acesso confirmado", description: "Redirecionando para sua clínica..." },
-    "recovery-sent": { title: "Instruções enviadas", description: "Enviamos as instruções de recuperação para o seu e-mail." }
+    "signup-sent": { title: "Cadastro iniciado", description: "Enviamos um e-mail de confirmação. Depois de confirmar, volte para entrar na plataforma." },
+    "recovery-sent": { title: "Link de redefinição enviado", description: "Enviamos um e-mail em português com o link seguro para criar uma nova senha." }
   };
   return alerts[state];
 }

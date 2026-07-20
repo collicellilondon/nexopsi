@@ -254,7 +254,12 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
           </div>
         ) : null}
 
-        <main className="px-4 py-6 md:px-6 lg:px-8">{children}</main>
+        <main className="px-4 py-6 md:px-6 lg:px-8">
+          {children}
+          <footer className="mt-10 border-t border-border pt-5 text-center text-xs font-semibold text-ink-muted">
+            Criado por <span className="font-black text-primary">ColliDev</span>
+          </footer>
+        </main>
       </div>
     </div>
   );
