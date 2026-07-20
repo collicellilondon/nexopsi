@@ -314,7 +314,7 @@ export function InteractiveHome() {
             icon={<WalletCards className="h-4 w-4" />}
             onAction={() => notify("Use o botão Nova fatura dentro do financeiro.")}
           />
-          <FinancePanel searchQuery={activeView === "financeiro" ? globalFilter : ""} onNotify={notify} />
+          <FinancePanel patients={patients} searchQuery={activeView === "financeiro" ? globalFilter : ""} onNotify={notify} />
         </>
       );
     }
