@@ -52,7 +52,7 @@ export function LoginPage() {
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "", remember: true }
+    defaultValues: { email: "", password: "", confirmPassword: "", remember: true }
   });
 
   const recoveryForm = useForm<RecoveryFormValues>({
@@ -69,7 +69,12 @@ export function LoginPage() {
     if (isSignup) {
       const parsed = signupSchema.safeParse(values);
       if (!parsed.success) {
-        form.setError("password", { message: parsed.error.flatten().fieldErrors.password?.[0] ?? "Revise os dados do cadastro." });
+        const errors = parsed.error.flatten().fieldErrors;
+        if (errors.confirmPassword?.[0]) {
+          form.setError("confirmPassword", { message: errors.confirmPassword[0] });
+        } else {
+          form.setError("password", { message: errors.password?.[0] ?? "Revise os dados do cadastro." });
+        }
         setAuthState("normal");
         return;
       }
@@ -207,6 +212,24 @@ export function LoginPage() {
                   </div>
                 </Field>
 
+                {isSignup ? (
+                  <Field label="Confirmar senha" error={form.formState.errors.confirmPassword?.message} htmlFor="confirmPassword">
+                    <div className="relative">
+                      <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#667085]" />
+                      <Input
+                        id="confirmPassword"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="new-password"
+                        placeholder="Repita a senha criada"
+                        className="h-12 rounded-md border-[#E4E7EC] px-10"
+                        aria-invalid={Boolean(form.formState.errors.confirmPassword)}
+                        aria-describedby={form.formState.errors.confirmPassword ? "confirmPassword-error" : undefined}
+                        {...form.register("confirmPassword")}
+                      />
+                    </div>
+                  </Field>
+                ) : null}
+
                 <div className="flex items-center justify-between gap-3 text-sm">
                   <label className="flex items-center gap-2 font-semibold text-[#667085]">
                     <input type="checkbox" className="h-4 w-4 rounded border-[#E4E7EC] accent-primary" {...form.register("remember")} />
@@ -255,6 +278,9 @@ export function LoginPage() {
               </a>
 
               <p className="mt-8 text-center text-xs font-semibold text-[#667085]">Privacidade · Termos de uso · Suporte</p>
+              <p className="mt-2 text-center text-xs font-semibold text-[#667085]">
+                Criado por <strong className="font-black text-primary">ColliDev</strong>
+              </p>
             </div>
           </div>
         </section>
@@ -291,6 +317,9 @@ function InstitutionalPanel() {
   return (
     <section className="relative hidden min-h-screen overflow-hidden bg-[#173E47] px-10 py-9 text-white lg:flex lg:flex-col">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(95,158,140,0.18),transparent_32%),radial-gradient(circle_at_80%_10%,rgba(255,255,255,0.08),transparent_28%),linear-gradient(145deg,#173E47_0%,#0F2E35_100%)]" />
+      <div className="auth-flow-lines auth-flow-lines-a" />
+      <div className="auth-flow-lines auth-flow-lines-b" />
+      <div className="auth-flow-grid" />
       <div className="absolute left-[-8%] top-[18%] h-72 w-72 animate-[softFloat_9s_ease-in-out_infinite] rounded-full border border-white/10" />
       <div className="absolute bottom-[12%] right-[8%] h-56 w-56 animate-[softFloat_11s_ease-in-out_infinite] rounded-[42%] border border-secondary/20" />
       <div className="absolute inset-x-20 top-1/2 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />

@@ -120,6 +120,58 @@ select {
   }
 }
 
+.auth-flow-lines {
+  position: absolute;
+  inset: -20%;
+  opacity: 0.42;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background:
+    linear-gradient(112deg, transparent 0 34%, rgba(255, 255, 255, 0.22) 35%, transparent 36% 100%),
+    linear-gradient(112deg, transparent 0 52%, rgba(95, 158, 140, 0.35) 53%, transparent 54% 100%),
+    linear-gradient(112deg, transparent 0 70%, rgba(255, 255, 255, 0.14) 71%, transparent 72% 100%);
+  background-size: 320px 100%, 420px 100%, 520px 100%;
+  animation: authLinesDrift 14s linear infinite;
+}
+
+.auth-flow-lines-b {
+  opacity: 0.25;
+  transform: rotate(180deg);
+  animation-duration: 22s;
+  animation-direction: reverse;
+}
+
+.auth-flow-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.16;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.14) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(120deg, transparent 0%, black 18%, black 72%, transparent 100%);
+  animation: authGridGlide 18s linear infinite;
+}
+
+@keyframes authLinesDrift {
+  from {
+    background-position: 0 0, 0 0, 0 0;
+  }
+  to {
+    background-position: 320px 0, 420px 0, 520px 0;
+  }
+}
+
+@keyframes authGridGlide {
+  from {
+    background-position: 0 0, 0 0;
+  }
+  to {
+    background-position: 84px 42px, 84px 42px;
+  }
+}
+
 .print-sheet {
   position: relative;
 }
