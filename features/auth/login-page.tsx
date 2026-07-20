@@ -362,29 +362,41 @@ function SalesPopup({ onClose }: { onClose: () => void }) {
               <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-white/12 text-secondary ring-1 ring-white/15">
                 <Rocket className="h-7 w-7" />
               </div>
-              <p className="mt-8 text-xs font-black uppercase tracking-[0.18em] text-white/62">Nexopsi para clinicas</p>
+              <p className="mt-8 text-xs font-black uppercase tracking-[0.18em] text-white/62">Nexopsi para clínicas</p>
               <h2 className="mt-3 text-3xl font-black leading-tight tracking-tight">
-                Seu consultorio com cara de app profissional.
+                Seu consultório com cara de app profissional.
               </h2>
               <p className="mt-4 text-sm leading-6 text-white/72">
-                Uma plataforma pronta para organizar agenda, pacientes, documentos, financeiro e relatorios em um unico lugar.
+                Uma plataforma pronta para organizar agenda, pacientes, documentos, financeiro e relatórios em um único lugar.
               </p>
             </div>
           </div>
 
           <div className="px-6 py-8">
-            <p className="text-sm font-black text-primary">Licenca com ativacao exclusiva</p>
+            <p className="text-sm font-black text-primary">Licença com ativação exclusiva</p>
             <h3 className="mt-2 text-2xl font-black text-ink">Venda com controle, acesso com chave.</h3>
             <p className="mt-3 text-sm leading-6 text-[#667085]">
-              O cliente fala com voce, fecha a contratacao pelo WhatsApp e recebe uma chave de ativacao para concluir o cadastro com seguranca.
+              A Nexopsi protege o acesso com código de ativação, mantendo o ambiente da clínica mais controlado desde o primeiro cadastro.
             </p>
+
+            <div className="mt-5 flex items-start gap-3 rounded-md border border-primary/15 bg-primary-soft px-3 py-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary text-white">
+                <LockKeyhole className="h-5 w-5" />
+              </span>
+              <span>
+                <span className="block text-sm font-black text-primary">Seguro e confidencial</span>
+                <span className="mt-1 block text-xs font-semibold leading-5 text-[#667085]">
+                  Acesso protegido, dados organizados e rotina clínica tratada com privacidade.
+                </span>
+              </span>
+            </div>
 
             <div className="mt-6 grid gap-3">
               {[
-                "Agenda clinica com sessoes e status de atendimento",
-                "Cadastro completo de pacientes e prontuarios",
-                "Financeiro com mensalidades, faturas e inadimplencia",
-                "Documentos e relatorios padronizados em PDF"
+                "Agenda clínica com sessões e status de atendimento",
+                "Cadastro completo de pacientes e prontuários",
+                "Financeiro com mensalidades, faturas e inadimplência",
+                "Documentos e relatórios padronizados em PDF"
               ].map((item) => (
                 <div key={item} className="flex items-start gap-3 rounded-md border border-border bg-background px-3 py-3">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
