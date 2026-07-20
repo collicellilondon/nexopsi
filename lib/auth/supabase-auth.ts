@@ -1,5 +1,7 @@
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
+const defaultAppUrl = "https://nexopsi.app.br";
+
 export async function signInWithEmail(email: string, password: string) {
   try {
     const supabase = createBrowserSupabaseClient();
@@ -44,7 +46,7 @@ export async function sendPasswordRecovery(email: string) {
   try {
     const supabase = createBrowserSupabaseClient();
     return await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/login`
+      redirectTo: `${getAppUrl()}/login?modo=redefinir-senha`
     });
   } catch {
     return {
@@ -52,4 +54,8 @@ export async function sendPasswordRecovery(email: string) {
       error: null
     };
   }
+}
+
+function getAppUrl() {
+  return (process.env.NEXT_PUBLIC_APP_URL || window.location.origin || defaultAppUrl).replace(/\/$/, "");
 }

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+const defaultAppUrl = "https://nexopsi.app.br";
+
 type SignupPayload = {
   email?: string;
   password?: string;
@@ -35,13 +37,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Supabase nao configurado para criar contas." }, { status: 500 });
   }
 
-  const origin = request.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "";
+  const appUrl = resolveAppUrl(request);
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
   const result = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: origin ? `${origin}/dashboard` : undefined,
+      emailRedirectTo: `${appUrl}/dashboard`,
       data: {
         app_name: "Nexopsi",
         activation_status: "validated",
@@ -70,4 +72,16 @@ function isValidActivationCode(value: string) {
 
 function normalizeActivationCode(value?: string) {
   return value?.trim().toUpperCase().replace(/\s+/g, "") ?? "";
+}
+
+function resolveAppUrl(request: Request) {
+  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (configuredUrl) return configuredUrl.replace(/\/$/, "");
+
+  const origin = request.headers.get("origin")?.trim();
+  if (origin?.startsWith("http://localhost") || origin?.startsWith("http://127.0.0.1")) {
+    return origin.replace(/\/$/, "");
+  }
+
+  return defaultAppUrl;
 }
