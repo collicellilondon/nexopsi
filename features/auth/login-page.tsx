@@ -39,7 +39,7 @@ type AuthState =
 type AuthMode = "signin" | "signup";
 
 const salesMessage = "Olá, quero contratar a Nexopsi para minha clínica.";
-const salesWhatsAppUrl = process.env.NEXT_PUBLIC_SALES_WHATSAPP_URL || `https://wa.me/?text=${encodeURIComponent(salesMessage)}`;
+const salesWhatsAppUrl = process.env.NEXT_PUBLIC_SALES_WHATSAPP_URL || `https://wa.me/4407726425982?text=${encodeURIComponent(salesMessage)}`;
 
 export function LoginPage() {
   const router = useRouter();
