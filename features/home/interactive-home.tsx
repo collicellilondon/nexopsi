@@ -50,6 +50,11 @@ export function InteractiveHome() {
 
     async function loadProfessionalProfile() {
       try {
+        const storedPatients = readStoredPatients();
+        if (active && storedPatients.length > 0) {
+          setPatients(dedupePatients(storedPatients));
+        }
+
         const supabase = createBrowserSupabaseClient();
         const { data: userData } = await supabase.auth.getUser();
         const userId = userData.user?.id;
@@ -63,6 +68,15 @@ export function InteractiveHome() {
 
         const metadata = userData.user?.user_metadata ?? {};
         if (error || !active) return;
+
+        const metadataPatients = readMetadataPatients(metadata.patients);
+        if (metadataPatients.length > 0) {
+          const nextPatients = dedupePatients(metadataPatients);
+          setPatients(nextPatients);
+          storePatientsLocally(nextPatients);
+        } else if (storedPatients.length > 0) {
+          await supabase.auth.updateUser({ data: { ...metadata, patients: dedupePatients(storedPatients) } });
+        }
 
         setProfessionalProfile({
           name: data?.full_name ?? String(metadata.full_name ?? ""),
@@ -97,7 +111,9 @@ export function InteractiveHome() {
   }
 
   function savePatient(patient: Patient) {
-    setPatients((current) => [patient, ...current]);
+    const nextPatients = dedupePatients([patient, ...patients]);
+    setPatients(nextPatients);
+    persistPatients(nextPatients);
     setPatientModalOpen(false);
     notify(`Paciente ${patient.name} cadastrado com ficha completa.`);
     setActiveView("pacientes");
@@ -127,15 +143,18 @@ export function InteractiveHome() {
         { onConflict: "id" }
       );
 
+      const currentMetadata = userData.user?.user_metadata ?? {};
       const metadataResult = await supabase.auth.updateUser({
         data: {
+          ...currentMetadata,
           full_name: profile.name || "Profissional Nexopsi",
           avatar_url: profile.photoUrl || "",
           crp: profile.register || "",
           phone: profile.phone || "",
           email: profile.email || userData.user?.email || "",
           specialty: profile.specialty || "",
-          bio: profile.bio || ""
+          bio: profile.bio || "",
+          patients
         }
       });
 
@@ -152,6 +171,21 @@ export function InteractiveHome() {
       notify(`Cadastro profissional salvo no Supabase para ${profile.name || "profissional"}.`);
     } catch {
       notify("Não foi possível conectar ao Supabase para salvar o cadastro profissional.");
+    }
+  }
+
+  async function persistPatients(nextPatients: Patient[]) {
+    storePatientsLocally(nextPatients);
+
+    try {
+      const supabase = createBrowserSupabaseClient();
+      const { data: userData } = await supabase.auth.getUser();
+      const metadata = userData.user?.user_metadata ?? {};
+      if (!userData.user?.id) return;
+      const { error } = await supabase.auth.updateUser({ data: { ...metadata, patients: nextPatients } });
+      if (error) notify(`Paciente salvo nesta tela, mas o Supabase retornou: ${error.message}`);
+    } catch {
+      notify("Paciente salvo nesta tela. Nao foi possivel sincronizar com o Supabase agora.");
     }
   }
 
@@ -428,4 +462,36 @@ function dedupePatients(items: Patient[]) {
     seen.add(key);
     return true;
   });
+}
+
+const patientStorageKey = "nexopsi_patients";
+
+function readStoredPatients() {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = window.localStorage.getItem(patientStorageKey);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored);
+    return readMetadataPatients(parsed);
+  } catch {
+    return [];
+  }
+}
+
+function readMetadataPatients(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is Patient => {
+    if (!item || typeof item !== "object") return false;
+    const patient = item as Partial<Patient>;
+    return typeof patient.id === "string" && typeof patient.name === "string";
+  });
+}
+
+function storePatientsLocally(items: Patient[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(patientStorageKey, JSON.stringify(items));
+  } catch {
+    // O Supabase continua sendo a fonte principal.
+  }
 }

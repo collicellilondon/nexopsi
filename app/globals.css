@@ -234,6 +234,18 @@ select {
   transform: rotate(-18deg);
 }
 
+.pdf-logo-watermark {
+  pointer-events: none;
+  position: absolute;
+  inset: -120px;
+  opacity: 0.055;
+  background-image: url("/brand/nexopsi-logo.png");
+  background-repeat: repeat;
+  background-size: 150px auto;
+  transform: rotate(-18deg) scale(1.08);
+  transform-origin: center;
+}
+
 @media print {
   body * {
     visibility: hidden;

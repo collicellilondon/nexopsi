@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -210,7 +211,14 @@ export function LoginPage() {
         <section className="flex min-h-screen flex-col bg-[#FBFAFF] px-5 py-6 sm:px-8 lg:px-12">
           <div className="mb-8 flex items-center justify-between lg:hidden">
             <BrandMark compact />
-            <span className="rounded-full bg-primary-soft px-3 py-1 text-xs font-bold text-primary">Acesso seguro</span>
+            <Button asChild variant="outline" size="sm" className="rounded-full border-primary/20 bg-white text-primary">
+              <Link href="/">Voltar ao site</Link>
+            </Button>
+          </div>
+          <div className="mb-6 hidden justify-end lg:flex">
+            <Button asChild variant="outline" className="rounded-full border-primary/20 bg-white px-5 text-primary shadow-line">
+              <Link href="/">Voltar para a landing page</Link>
+            </Button>
           </div>
 
           <div className="flex flex-1 items-center justify-center">

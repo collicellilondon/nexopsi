@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   AlertTriangle,
@@ -8,12 +9,12 @@ import {
   CheckCircle2,
   CreditCard,
   FileText,
+  Mail,
   MessageCircle,
   Pencil,
   Plus,
   Receipt,
   Search,
-  Send,
   Settings2,
   WalletCards,
   X
@@ -205,17 +206,29 @@ export function FinancePanel({ patients = [], searchQuery = "", onNotify }: { pa
       return;
     }
 
-    const message = [
-      `Ola, ${invoice.patient}.`,
-      "Segue sua fatura da Nexopsi:",
-      `${invoice.description}`,
-      `Valor: ${brl.format(invoice.amount)}`,
-      `Vencimento: ${new Date(invoice.dueDate).toLocaleDateString("pt-BR")}`,
-      `Forma de pagamento: ${invoice.method}`
-    ].join("\n");
+    const message = buildInvoiceMessage(invoice, "whatsapp");
 
+    setPrintInvoice(invoice);
+    window.setTimeout(() => window.print(), 120);
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
-    onNotify(`Cobranca aberta no WhatsApp para ${invoice.patient}.`);
+    onNotify(`PDF da fatura aberto. Salve o arquivo e anexe no WhatsApp de ${invoice.patient}.`);
+  }
+
+  function sendInvoiceEmail(invoice: Invoice) {
+    if (!invoice.patientEmail) {
+      onNotify(`Informe o e-mail de ${invoice.patient} no cadastro ou na fatura.`);
+      return;
+    }
+
+    const subject = `Fatura Nexopsi - ${invoice.patient}`;
+    const body = buildInvoiceMessage(invoice, "email");
+
+    setPrintInvoice(invoice);
+    window.setTimeout(() => window.print(), 120);
+    window.setTimeout(() => {
+      window.location.href = `mailto:${invoice.patientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    }, 300);
+    onNotify(`PDF da fatura aberto. Salve o arquivo e anexe no e-mail para ${invoice.patient}.`);
   }
 
   return (
@@ -256,6 +269,7 @@ export function FinancePanel({ patients = [], searchQuery = "", onNotify }: { pa
           onCancel={cancelInvoice}
           onGeneratePdf={generateInvoicePdf}
           onSendWhatsApp={sendInvoiceWhatsApp}
+          onSendEmail={sendInvoiceEmail}
           onNotify={onNotify}
         />
       ) : null}
@@ -457,6 +471,7 @@ function InvoicesTab({
   onCancel,
   onGeneratePdf,
   onSendWhatsApp,
+  onSendEmail,
   onNotify
 }: {
   filtered: Invoice[];
@@ -469,6 +484,7 @@ function InvoicesTab({
   onCancel: (id: string) => void;
   onGeneratePdf: (invoice: Invoice) => void;
   onSendWhatsApp: (invoice: Invoice) => void;
+  onSendEmail: (invoice: Invoice) => void;
   onNotify: (message: string) => void;
 }) {
   return (
@@ -477,7 +493,7 @@ function InvoicesTab({
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <CardTitle>Faturas, mensalidades e cobrancas</CardTitle>
-            <CardDescription>Gerencie pagamentos, inadimplentes, recibos, PDF e envio por WhatsApp.</CardDescription>
+            <CardDescription>Gerencie pagamentos, inadimplentes, recibos, PDF e envio por WhatsApp ou e-mail.</CardDescription>
           </div>
           <Button type="button" onClick={onCreate}>
             <Plus className="h-4 w-4" />
@@ -501,7 +517,7 @@ function InvoicesTab({
         </div>
 
         <div className="overflow-hidden rounded-lg border border-border">
-          <div className="hidden grid-cols-[0.95fr_1.1fr_0.55fr_0.65fr_0.55fr_0.65fr_230px] gap-4 bg-background px-4 py-3 text-xs font-black uppercase text-ink-muted lg:grid">
+          <div className="hidden grid-cols-[0.95fr_1.1fr_0.55fr_0.65fr_0.55fr_0.65fr_270px] gap-4 bg-background px-4 py-3 text-xs font-black uppercase text-ink-muted lg:grid">
             <span>Paciente</span>
             <span>Descricao</span>
             <span>Tipo</span>
@@ -512,7 +528,7 @@ function InvoicesTab({
           </div>
           <div className="divide-y divide-border bg-white">
             {filtered.map((invoice) => (
-              <div key={invoice.id} className="grid gap-4 px-4 py-4 lg:grid-cols-[0.95fr_1.1fr_0.55fr_0.65fr_0.55fr_0.65fr_230px] lg:items-center">
+              <div key={invoice.id} className="grid gap-4 px-4 py-4 lg:grid-cols-[0.95fr_1.1fr_0.55fr_0.65fr_0.55fr_0.65fr_270px] lg:items-center">
                 <div>
                   <p className="font-bold text-ink">{invoice.patient}</p>
                   <p className="text-xs font-semibold text-ink-muted">{invoice.patientPhone || invoice.patientEmail || "Sem contato"}</p>
@@ -530,8 +546,8 @@ function InvoicesTab({
                   <Button type="button" size="icon" variant="ghost" aria-label="Enviar por WhatsApp" onClick={() => onSendWhatsApp(invoice)}>
                     <MessageCircle className="h-4 w-4" />
                   </Button>
-                  <Button type="button" size="icon" variant="ghost" aria-label="Enviar cobranca" onClick={() => onNotify(`Cobranca enviada para ${invoice.patient}.`)}>
-                    <Send className="h-4 w-4" />
+                  <Button type="button" size="icon" variant="ghost" aria-label="Enviar por e-mail" onClick={() => onSendEmail(invoice)}>
+                    <Mail className="h-4 w-4" />
                   </Button>
                   <Button type="button" size="icon" variant="ghost" aria-label="Cancelar fatura" onClick={() => onCancel(invoice.id)}>
                     <X className="h-4 w-4" />
@@ -734,56 +750,87 @@ function PriceModal({ onClose, onSave }: { onClose: () => void; onSave: (price: 
 function PrintableInvoice({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
   return (
     <div className="print-sheet fixed inset-0 z-[60] overflow-y-auto bg-white p-6 print:p-0">
-      <div className="mx-auto max-w-3xl rounded-lg border border-border bg-white p-8 shadow-soft print:rounded-none print:border-0 print:shadow-none">
-        <div className="watermark">NEXOPSI</div>
+      <div className="relative mx-auto min-h-[1060px] max-w-4xl overflow-hidden rounded-lg border border-border bg-white shadow-soft print:min-h-screen print:rounded-none print:border-0 print:shadow-none">
+        <div className="pdf-logo-watermark" />
         <div className="relative z-10">
-          <div className="flex items-start justify-between gap-6 border-b border-border pb-6">
-            <div>
-              <p className="text-sm font-black uppercase tracking-wide text-primary">Nexopsi</p>
-              <h1 className="mt-2 text-3xl font-black text-ink">Fatura clinica</h1>
-              <p className="mt-1 text-sm font-semibold text-ink-muted">Documento gerado para cobranca de atendimento.</p>
+          <header className="bg-gradient-to-br from-[#24145F] via-[#42259A] to-[#6D48E5] px-10 py-9 text-white">
+            <div className="flex items-start justify-between gap-8">
+              <div>
+                <div className="flex h-20 w-72 items-center overflow-hidden rounded-md bg-white/95 p-2 shadow-[0_18px_45px_rgba(18,11,49,0.22)]">
+                  <Image src="/brand/nexopsi-logo.png" alt="Nexopsi" width={320} height={150} priority className="h-full w-full object-contain" />
+                </div>
+                <p className="mt-6 text-xs font-black uppercase tracking-[0.22em] text-white/65">Documento financeiro</p>
+                <h1 className="mt-2 text-5xl font-black leading-tight tracking-tight">Fatura</h1>
+                <p className="mt-3 max-w-xl text-sm font-semibold leading-6 text-white/78">
+                  Cobrança gerada pela Nexopsi para controle de atendimento, mensalidade ou serviço clínico.
+                </p>
+              </div>
+              <div className="min-w-52 rounded-lg border border-white/15 bg-white/10 p-4 text-right backdrop-blur">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-white/60">Identificação</p>
+                <p className="mt-2 break-all text-lg font-black text-white">{invoice.id}</p>
+                <p className="mt-4 text-sm font-semibold text-white/75">Vencimento</p>
+                <p className="text-xl font-black text-white">{new Date(invoice.dueDate).toLocaleDateString("pt-BR")}</p>
+                <Badge variant={statusStyle[invoice.status]} className="mt-4">{statusLabel[invoice.status]}</Badge>
+              </div>
             </div>
-            <div className="text-right text-sm font-semibold text-ink-muted">
-              <p className="font-black text-ink">{invoice.id}</p>
-              <p>Vencimento: {new Date(invoice.dueDate).toLocaleDateString("pt-BR")}</p>
-              <p>Status: {statusLabel[invoice.status]}</p>
-            </div>
-          </div>
+          </header>
 
-          <div className="mt-8 grid gap-5 md:grid-cols-2">
-            <div className="rounded-md border border-border bg-background p-4">
-              <p className="text-xs font-black uppercase text-ink-muted">Cliente</p>
-              <p className="mt-2 text-lg font-black text-ink">{invoice.patient}</p>
-              <p className="mt-1 text-sm font-semibold text-ink-muted">{invoice.patientPhone || "Telefone nao informado"}</p>
-              <p className="text-sm font-semibold text-ink-muted">{invoice.patientEmail || "E-mail nao informado"}</p>
+          <main className="px-10 py-9">
+            <div className="grid gap-5 md:grid-cols-2">
+              <div className="rounded-lg border border-primary/12 bg-white/92 p-5 shadow-line">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Cliente</p>
+                <p className="mt-3 text-2xl font-black text-ink">{invoice.patient}</p>
+                <div className="mt-4 space-y-1 text-sm font-semibold text-ink-muted">
+                  <p>{invoice.patientPhone || "Telefone não informado"}</p>
+                  <p>{invoice.patientEmail || "E-mail não informado"}</p>
+                </div>
+              </div>
+              <div className="rounded-lg border border-primary/12 bg-white/92 p-5 shadow-line">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Pagamento</p>
+                <p className="mt-3 text-2xl font-black text-ink">{invoice.method}</p>
+                <div className="mt-4 space-y-1 text-sm font-semibold text-ink-muted">
+                  <p>{kindLabel[invoice.kind]}</p>
+                  <p>{invoice.installments || "Parcela única"}</p>
+                </div>
+              </div>
             </div>
-            <div className="rounded-md border border-border bg-background p-4">
-              <p className="text-xs font-black uppercase text-ink-muted">Pagamento</p>
-              <p className="mt-2 text-lg font-black text-ink">{invoice.method}</p>
-              <p className="mt-1 text-sm font-semibold text-ink-muted">{kindLabel[invoice.kind]} {invoice.installments ? `- ${invoice.installments}` : ""}</p>
-            </div>
-          </div>
 
-          <div className="mt-8 overflow-hidden rounded-md border border-border">
-            <div className="grid grid-cols-[1fr_160px] bg-background px-4 py-3 text-xs font-black uppercase text-ink-muted">
-              <span>Descricao</span>
-              <span className="text-right">Valor</span>
+            <div className="mt-9 overflow-hidden rounded-lg border border-border bg-white/95 shadow-line">
+              <div className="grid grid-cols-[1fr_170px] bg-[#F4F0FF] px-5 py-4 text-xs font-black uppercase tracking-[0.12em] text-primary">
+                <span>Descrição</span>
+                <span className="text-right">Valor</span>
+              </div>
+              <div className="grid grid-cols-[1fr_170px] px-5 py-7 text-sm font-semibold text-ink">
+                <span>{invoice.description}</span>
+                <span className="text-right text-xl font-black">{brl.format(invoice.amount)}</span>
+              </div>
             </div>
-            <div className="grid grid-cols-[1fr_160px] px-4 py-5 text-sm font-semibold text-ink">
-              <span>{invoice.description}</span>
-              <span className="text-right text-lg font-black">{brl.format(invoice.amount)}</span>
+
+            <div className="mt-9 grid gap-5 md:grid-cols-[1fr_280px] md:items-stretch">
+              <div className="rounded-lg border border-border bg-white/92 p-5 text-sm font-semibold leading-6 text-ink-muted shadow-line">
+                <p className="font-black text-ink">Observações</p>
+                <p className="mt-2">
+                  Esta fatura registra uma cobrança clínica emitida pela plataforma Nexopsi. Guarde este documento para conferência financeira e organização do atendimento.
+                </p>
+              </div>
+              <div className="rounded-lg bg-primary p-6 text-white shadow-[0_18px_45px_rgba(109,72,229,0.25)]">
+                <p className="text-sm font-semibold text-white/75">Total da fatura</p>
+                <p className="mt-2 text-4xl font-black">{brl.format(invoice.amount)}</p>
+                <p className="mt-3 text-xs font-bold uppercase tracking-[0.16em] text-white/60">{statusLabel[invoice.status]}</p>
+              </div>
             </div>
-          </div>
 
-          <div className="mt-8 rounded-md bg-primary p-5 text-white">
-            <p className="text-sm font-semibold text-white/75">Total da fatura</p>
-            <p className="mt-2 text-3xl font-black">{brl.format(invoice.amount)}</p>
-          </div>
+            <footer className="mt-12 border-t border-border pt-5 text-center text-xs font-semibold leading-5 text-ink-muted">
+              <p className="font-black text-ink">Nexopsi | Gestão clínica para psicólogos</p>
+              <p>Documento gerado eletronicamente. As informações financeiras devem ser conferidas pela clínica antes do envio ao paciente.</p>
+              <p>nexopsi.app.br</p>
+            </footer>
 
-          <div className="mt-6 flex justify-end gap-3 print:hidden">
-            <Button type="button" variant="outline" onClick={onClose}>Fechar</Button>
-            <Button type="button" onClick={() => window.print()}>Imprimir / salvar PDF</Button>
-          </div>
+            <div className="mt-6 flex justify-end gap-3 print:hidden">
+              <Button type="button" variant="outline" onClick={onClose}>Fechar</Button>
+              <Button type="button" onClick={() => window.print()}>Imprimir / salvar PDF</Button>
+            </div>
+          </main>
         </div>
       </div>
     </div>
@@ -836,4 +883,24 @@ function normalizePhoneForWhatsApp(value?: string) {
   if (!digits) return "";
   if (digits.startsWith("55") || digits.startsWith("44")) return digits;
   return `55${digits}`;
+}
+
+function buildInvoiceMessage(invoice: Invoice, channel: "whatsapp" | "email") {
+  const dueDate = new Date(invoice.dueDate).toLocaleDateString("pt-BR");
+  const pdfNote =
+    channel === "whatsapp"
+      ? "Estou encaminhando a fatura em PDF nesta conversa para conferencia."
+      : "Estou encaminhando a fatura em PDF em anexo para conferencia.";
+
+  return [
+    `Ola, ${invoice.patient}.`,
+    pdfNote,
+    "",
+    `Descricao: ${invoice.description}`,
+    `Valor: ${brl.format(invoice.amount)}`,
+    `Vencimento: ${dueDate}`,
+    `Forma de pagamento: ${invoice.method}`,
+    "",
+    "Qualquer duvida, fico a disposicao."
+  ].join("\n");
 }
