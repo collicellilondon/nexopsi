@@ -1,18 +1,18 @@
 # Resend: dominio Nexopsi
 
-Dominio cadastrado no Resend:
+Dominio atual configurado no Resend:
 
 ```text
-nexopsi.com.br
+nexopsi.app.br
 ```
 
-Status atual no Resend:
+Observacao: embora o site possa usar `www.nexopsi.app.br`, para envio de e-mail o Resend exibiu o dominio como `nexopsi.app.br`. O remetente profissional planejado fica:
 
 ```text
-not started
+Nexopsi <noreply@nexopsi.app.br>
 ```
 
-O status ficara pendente ate os registros abaixo serem adicionados no DNS do dominio.
+O dominio so sera verificado depois que os registros abaixo forem adicionados no DNS.
 
 ## Registros obrigatorios para envio
 
@@ -21,7 +21,7 @@ O status ficara pendente ate os registros abaixo serem adicionados no DNS do dom
 ```text
 Type: TXT
 Name: resend._domainkey
-Content: p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCoetQuludPzLuAsbbXa7GYE5lZm2ORu7VBgVDNi91DyCsUOqMtzskIOfq5L/NItNyrBjVBtSNTWAT8CzAS1EgVLEnB8rxRQDDcnzdHWgq58Ck9UrkTDBiuJknkpdN6OHHG9A6t73hVlY3XlnSEcU0J2/0P8008i0HYPb86g5JAIwIDAQAB
+Content: p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDLx1oTs6M/740I0pTsfOOUcsFcZ9abzJX6IWm+rqBuX2l71r+PaTvkuqpuEPUj8AJuJ1glT3y+bPsJYuo/tjFdz+XHv5+r7ziwDANQpntoJAB1Cg/Lc/+nEt2zpPD564RLvbqBANPmoiUEFBp9jzMjynXbXuCT/nalH0k4SEh1rwIDAQAB
 TTL: Auto
 ```
 
@@ -44,22 +44,12 @@ Content: v=spf1 include:amazonses.com ~all
 TTL: Auto
 ```
 
-## Opcional: recebimento de emails
+## Depois de adicionar no DNS
 
-Ative apenas se quiser receber emails pelo Resend.
+1. Abra o Resend.
+2. Va em `Domains`.
+3. Abra `nexopsi.app.br`.
+4. Clique em `Verify DNS Records` ou `I've added the records`.
+5. Aguarde a verificacao.
 
-```text
-Type: MX
-Name: @
-Content: inbound-smtp.sa-east-1.amazonaws.com
-Priority: 0
-TTL: Auto
-```
-
-## Remetente planejado
-
-```text
-Nexopsi <noreply@nexopsi.com.br>
-```
-
-Esse remetente so deve ser usado em producao depois que o dominio estiver verificado no Resend.
+Pode levar alguns minutos ou algumas horas, dependendo do provedor de DNS.
