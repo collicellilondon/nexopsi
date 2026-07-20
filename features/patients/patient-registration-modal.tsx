@@ -26,11 +26,13 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 type PatientRegistrationModalProps = {
+  professionalName: string;
   onClose: () => void;
   onCreate: (patient: Patient) => void;
 };
 
-export function PatientRegistrationModal({ onClose, onCreate }: PatientRegistrationModalProps) {
+export function PatientRegistrationModal({ professionalName, onClose, onCreate }: PatientRegistrationModalProps) {
+  const responsibleName = professionalName.trim() || "Profissional a definir";
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -63,7 +65,7 @@ export function PatientRegistrationModal({ onClose, onCreate }: PatientRegistrat
       pendingBalance: 0,
       phone: values.phone,
       email: values.email,
-      therapist: "Tatiane Bonfin"
+      therapist: responsibleName
     });
   }
 
@@ -91,7 +93,7 @@ export function PatientRegistrationModal({ onClose, onCreate }: PatientRegistrat
           <Field label="Contato de emergência" error={form.formState.errors.emergencyContact?.message}><Input {...form.register("emergencyContact")} /></Field>
           <Field label="Responsável legal" error={form.formState.errors.guardian?.message}><Input {...form.register("guardian")} placeholder="Quando aplicável" /></Field>
           <Field label="Origem do encaminhamento" error={form.formState.errors.referralSource?.message}><Input {...form.register("referralSource")} /></Field>
-          <Field label="Psicóloga responsável"><Input value="Tatiane Bonfin" readOnly /></Field>
+          <Field label="Psicóloga responsável"><Input value={responsibleName} readOnly /></Field>
           <div className="md:col-span-2"><TextField label="Queixa principal" error={form.formState.errors.mainComplaint?.message} registration={form.register("mainComplaint")} /></div>
           <div className="md:col-span-2"><TextField label="Observações clínicas iniciais" registration={form.register("clinicalNotes")} /></div>
           <div className="flex justify-end gap-3 border-t border-border pt-4 md:col-span-2">

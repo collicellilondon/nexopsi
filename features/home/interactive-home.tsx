@@ -14,7 +14,6 @@ import { FinancePanel } from "@/features/finance/finance-panel";
 import { SessionManagement } from "@/features/sessions/session-management";
 import { DocumentCenter } from "@/features/documents/document-center";
 import { ProfessionalProfile, type ProfessionalProfileData } from "@/features/settings/professional-profile";
-import { patients as initialPatients } from "@/lib/mock-data";
 import type { Patient } from "@/lib/types";
 
 export function InteractiveHome() {
@@ -24,16 +23,16 @@ export function InteractiveHome() {
   const [activeView, setActiveView] = useState<AppView>("inicio");
   const [globalFilter, setGlobalFilter] = useState("");
   const [professionalProfile, setProfessionalProfile] = useState<ProfessionalProfileData>({
-    name: "Tatiane Bonfin",
-    register: "CRP 06/123456",
-    email: "tatiane@nexopsi.com",
-    phone: "(11) 99999-0000",
-    specialty: "Psicologia clínica",
-    bio: "Atendimento adulto com foco em ansiedade, organização emocional e qualidade de vida.",
+    name: "",
+    register: "",
+    email: "",
+    phone: "",
+    specialty: "Psicologia clinica",
+    bio: "",
     photoUrl: ""
   });
-  const [message, setMessage] = useState("Ambiente limpo para apresentação: cadastre pacientes, sessões e documentos para testar o fluxo.");
-  const allPatients = useMemo(() => dedupePatients([...patients, ...initialPatients]), [patients]);
+  const [message, setMessage] = useState("Ambiente zerado: complete o cadastro profissional e comece criando pacientes, sessoes e documentos.");
+  const allPatients = useMemo(() => dedupePatients(patients), [patients]);
   const patientSuggestions = useMemo<SearchSuggestion[]>(
     () =>
       allPatients.map((patient) => ({
@@ -151,7 +150,21 @@ export function InteractiveHome() {
 
   function renderActiveView() {
     if (activeView === "inicio") {
-      return <Dashboard professionalName={professionalProfile.name} onCreatePatient={createPatient} onCreateSession={createSession} onOpenDocuments={openDocuments} onNotify={notify} />;
+      return (
+        <Dashboard
+          professionalName={professionalProfile.name}
+          professionalRegister={professionalProfile.register}
+          onCreatePatient={createPatient}
+          onCreateSession={createSession}
+          onOpenDocuments={openDocuments}
+          onOpenSettings={() => {
+            setActiveView("configuracoes");
+            setGlobalFilter("");
+            notify("Cadastro profissional aberto.");
+          }}
+          onNotify={notify}
+        />
+      );
     }
 
     if (activeView === "pacientes") {
@@ -298,7 +311,7 @@ export function InteractiveHome() {
         <div className="min-h-[calc(100vh-10rem)]">{renderActiveView()}</div>
       </div>
 
-      {patientModalOpen ? <PatientRegistrationModal onClose={() => setPatientModalOpen(false)} onCreate={savePatient} /> : null}
+      {patientModalOpen ? <PatientRegistrationModal professionalName={professionalProfile.name} onClose={() => setPatientModalOpen(false)} onCreate={savePatient} /> : null}
     </AppShell>
   );
 }

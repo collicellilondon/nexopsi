@@ -63,7 +63,9 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
   const [query, setQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const initials = getInitials(professionalName);
+  const displayName = professionalName.trim() || "Cadastro profissional";
+  const displaySpecialty = professionalSpecialty.trim() || "Configure seu perfil";
+  const initials = getInitials(displayName);
   const visibleSuggestions = useMemo(() => {
     const value = normalizeSearch(query);
     if (value.length < 2) return [];
@@ -152,14 +154,14 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
             <CircleHelp className="h-5 w-5" />
             <span className={cn(collapsed && "lg:hidden")}>Ajuda</span>
           </button>
-          <button type="button" onClick={() => onNotify(`Perfil de ${professionalName} selecionado.`)} className={cn("flex w-full items-center gap-3 rounded-md bg-background p-2 text-left", collapsed && "lg:justify-center")}>
+          <button type="button" onClick={() => onNotify(`Perfil de ${displayName} selecionado.`)} className={cn("flex w-full items-center gap-3 rounded-md bg-background p-2 text-left", collapsed && "lg:justify-center")}>
             <Avatar>
-              {professionalPhotoUrl ? <AvatarImage src={professionalPhotoUrl} alt={`Foto de ${professionalName}`} /> : null}
+              {professionalPhotoUrl ? <AvatarImage src={professionalPhotoUrl} alt={`Foto de ${displayName}`} /> : null}
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
             <div className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
-              <p className="truncate text-sm font-bold text-ink">{professionalName}</p>
-              <p className="truncate text-xs text-ink-muted">{professionalSpecialty}</p>
+              <p className="truncate text-sm font-bold text-ink">{displayName}</p>
+              <p className="truncate text-xs text-ink-muted">{displaySpecialty}</p>
             </div>
           </button>
           <button type="button" onClick={signOut} className={cn("flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-semibold text-destructive hover:bg-red-50", collapsed && "lg:justify-center lg:px-0")}>
@@ -217,11 +219,11 @@ export function AppShell({ children, professionalName, professionalSpecialty, pr
             </Button>
             <div className="hidden min-w-0 items-center gap-3 rounded-md border border-border bg-white px-2 py-1.5 sm:flex">
               <div className="min-w-0 text-right">
-                <p className="max-w-40 truncate text-sm font-black text-ink">{professionalName}</p>
-                <p className="max-w-40 truncate text-xs font-semibold text-ink-muted">{professionalSpecialty}</p>
+                <p className="max-w-40 truncate text-sm font-black text-ink">{displayName}</p>
+                <p className="max-w-40 truncate text-xs font-semibold text-ink-muted">{displaySpecialty}</p>
               </div>
               <Avatar>
-                {professionalPhotoUrl ? <AvatarImage src={professionalPhotoUrl} alt={`Foto de ${professionalName}`} /> : null}
+                {professionalPhotoUrl ? <AvatarImage src={professionalPhotoUrl} alt={`Foto de ${displayName}`} /> : null}
                 <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
             </div>

@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/states";
-import { patients as initialPatients } from "@/lib/mock-data";
 import { brl } from "@/lib/utils";
 import type { Patient, PatientStatus } from "@/lib/types";
 
@@ -32,7 +31,7 @@ type PatientListProps = {
 };
 
 export function PatientList({ patients, searchQuery = "", onNotify }: PatientListProps) {
-  const [items, setItems] = useState<Patient[]>(initialPatients);
+  const [items, setItems] = useState<Patient[]>([]);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<PatientStatus | "todos">("todos");
   const [showOnlyDebt, setShowOnlyDebt] = useState(false);

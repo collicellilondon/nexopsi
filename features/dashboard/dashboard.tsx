@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   FilePlus2,
+  IdCard,
   Receipt,
   ShieldCheck,
   UserPlus
@@ -27,14 +28,18 @@ const toneClass = {
 
 type DashboardProps = {
   professionalName: string;
+  professionalRegister: string;
   onCreatePatient: () => void;
   onCreateSession: () => void;
   onOpenDocuments: () => void;
+  onOpenSettings: () => void;
   onNotify: (message: string) => void;
 };
 
-export function Dashboard({ professionalName, onCreatePatient, onCreateSession, onOpenDocuments, onNotify }: DashboardProps) {
+export function Dashboard({ professionalName, professionalRegister, onCreatePatient, onCreateSession, onOpenDocuments, onOpenSettings, onNotify }: DashboardProps) {
   const [pendingItems, setPendingItems] = useState(clinicalPendencies);
+  const displayName = professionalName.trim() || "profissional";
+  const displayRegister = professionalRegister.trim() || "Registro profissional ainda nao cadastrado";
 
   const quickActions = [
     { label: "Criar paciente", icon: UserPlus, action: onCreatePatient },
@@ -52,18 +57,31 @@ export function Dashboard({ professionalName, onCreatePatient, onCreateSession, 
     <section className="space-y-6">
       <div className="flex flex-col gap-4 rounded-lg bg-primary px-5 py-6 text-white shadow-soft md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-semibold text-white/75">Sexta-feira, 17 de julho de 2026</p>
-          <h1 className="mt-2 text-2xl font-black md:text-3xl">Bom dia, {getFirstName(professionalName)}. Sua clínica está organizada para hoje.</h1>
+          <p className="text-sm font-semibold text-white/75">Bem-vindo a Nexopsi</p>
+          <h1 className="mt-2 text-2xl font-black md:text-3xl">Ola, {getFirstName(displayName)}. Configure seu portal para comecar.</h1>
           <p className="mt-2 max-w-3xl text-sm text-white/78">
-            Visão executiva da agenda, prontuários, pacientes e pendências clínicas para conduzir o dia com segurança.
+            Cada perfil inicia com ambiente proprio e dados zerados. Cadastre seu registro profissional, crie pacientes, organize sessoes e gere documentos padronizados.
           </p>
         </div>
-        <button type="button" onClick={onCreateSession} className="rounded-md bg-white/12 p-4 text-left transition hover:bg-white/20">
-          <p className="text-sm text-white/75">Próxima sessão</p>
-          <p className="mt-1 text-xl font-black">Nenhuma hoje</p>
-          <p className="text-sm text-white/75">Clique para criar a primeira sessão</p>
+        <button type="button" onClick={onOpenSettings} className="rounded-md bg-white/12 p-4 text-left transition hover:bg-white/20">
+          <p className="text-sm text-white/75">Cadastro profissional</p>
+          <p className="mt-1 text-xl font-black">{displayRegister}</p>
+          <p className="text-sm text-white/75">Clique para informar nome, registro, contato e foto</p>
         </button>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Primeiros passos</CardTitle>
+          <CardDescription>Resumo rapido para usar a plataforma no primeiro acesso.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <OnboardingItem icon={IdCard} title="1. Cadastro" description="Preencha nome, registro, telefone, e-mail, especialidade e foto em Configuracoes." action="Abrir cadastro" onClick={onOpenSettings} />
+          <OnboardingItem icon={UserPlus} title="2. Pacientes" description="Crie fichas completas com contato, endereco, responsavel, queixa e observacoes iniciais." action="Novo paciente" onClick={onCreatePatient} />
+          <OnboardingItem icon={CalendarPlus} title="3. Sessoes" description="Organize a agenda por status, registre presenca, pagamento, evolucao e retornos." action="Agendar sessao" onClick={onCreateSession} />
+          <OnboardingItem icon={FilePlus2} title="4. Documentos" description="Gere prontuarios, recibos, relatorios e PDFs com cabecalho profissional." action="Abrir documentos" onClick={onOpenDocuments} />
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {dashboardMetrics.map((metric) => (
@@ -181,6 +199,19 @@ function OperationalItem({ icon: Icon, title, value, description, tone }: { icon
   );
 }
 
+function OnboardingItem({ icon: Icon, title, description, action, onClick }: { icon: LucideIcon; title: string; description: string; action: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="rounded-md border border-border bg-background p-4 text-left transition hover:border-primary/35 hover:bg-primary-soft">
+      <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary-soft text-primary">
+        <Icon className="h-5 w-5" />
+      </div>
+      <p className="mt-3 text-sm font-black text-ink">{title}</p>
+      <p className="mt-2 min-h-16 text-sm font-semibold text-ink-muted">{description}</p>
+      <p className="mt-3 text-sm font-black text-primary">{action}</p>
+    </button>
+  );
+}
+
 function getFirstName(name: string) {
-  return name.trim().split(" ")[0] || "Tatiane";
+  return name.trim().split(" ")[0] || "profissional";
 }

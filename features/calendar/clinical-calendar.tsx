@@ -165,7 +165,7 @@ export function ClinicalCalendar({ createdCount, onNotify }: ClinicalCalendarPro
           <Card>
             <CardHeader>
               <CardTitle>Cores por status</CardTitle>
-              <CardDescription>A cor mostra a situação atual do agendamento da Tatiane Bonfin.</CardDescription>
+              <CardDescription>A cor mostra a situacao atual de cada agendamento.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {activeLegend.map((item) => (
