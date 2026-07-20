@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Nexopsi | Gestão para psicólogos",
-  description: "Plataforma SaaS moderna para gestão clínica, agenda, prontuário e financeiro."
+  title: "Nexopsi | Gestão para psicólogas",
+  description: "Plataforma SaaS moderna para gestão clínica, agenda, prontuário, documentos e financeiro."
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

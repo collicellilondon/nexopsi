@@ -172,6 +172,51 @@ select {
   }
 }
 
+.landing-aurora {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(197, 107, 67, 0.18), transparent 28%),
+    radial-gradient(circle at 84% 18%, rgba(95, 158, 140, 0.24), transparent 30%),
+    radial-gradient(circle at 55% 82%, rgba(36, 91, 104, 0.18), transparent 36%),
+    linear-gradient(135deg, #fbfbf8 0%, #eef6f3 48%, #fbfbf8 100%);
+}
+
+.landing-lines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.42;
+  background-image:
+    linear-gradient(115deg, transparent 0 36%, rgba(36, 91, 104, 0.13) 36.25%, transparent 36.75% 100%),
+    linear-gradient(115deg, transparent 0 61%, rgba(197, 107, 67, 0.12) 61.25%, transparent 61.75% 100%),
+    linear-gradient(rgba(36, 91, 104, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(36, 91, 104, 0.06) 1px, transparent 1px);
+  background-size: 440px 100%, 620px 100%, 48px 48px, 48px 48px;
+  mask-image: linear-gradient(180deg, black 0%, black 64%, transparent 100%);
+  animation: landingLinesMove 24s linear infinite;
+}
+
+.landing-dashboard-frame {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow:
+    0 34px 90px rgba(31, 41, 55, 0.18),
+    0 0 0 10px rgba(255, 255, 255, 0.34);
+}
+
+@keyframes landingLinesMove {
+  from {
+    background-position: 0 0, 0 0, 0 0, 0 0;
+  }
+  to {
+    background-position: 440px 0, -620px 0, 96px 48px, 96px 48px;
+  }
+}
+
 .print-sheet {
   position: relative;
 }
