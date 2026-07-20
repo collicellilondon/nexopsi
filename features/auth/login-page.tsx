@@ -12,6 +12,7 @@ import {
   Eye,
   EyeOff,
   HeartHandshake,
+  KeyRound,
   LockKeyhole,
   Mail,
   MessageCircle,
@@ -52,7 +53,7 @@ export function LoginPage() {
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "", confirmPassword: "", remember: true }
+    defaultValues: { email: "", password: "", confirmPassword: "", activationCode: "", remember: true }
   });
 
   const recoveryForm = useForm<RecoveryFormValues>({
@@ -72,6 +73,8 @@ export function LoginPage() {
         const errors = parsed.error.flatten().fieldErrors;
         if (errors.confirmPassword?.[0]) {
           form.setError("confirmPassword", { message: errors.confirmPassword[0] });
+        } else if (errors.activationCode?.[0]) {
+          form.setError("activationCode", { message: errors.activationCode[0] });
         } else {
           form.setError("password", { message: errors.password?.[0] ?? "Revise os dados do cadastro." });
         }
@@ -79,7 +82,7 @@ export function LoginPage() {
         return;
       }
 
-      const result = await signUpWithEmail(values.email, values.password);
+      const result = await signUpWithEmail(values.email, values.password, values.activationCode ?? "");
       if (!result.error) {
         if (result.data?.session) {
           setSessionCookie(values.remember);
@@ -89,6 +92,12 @@ export function LoginPage() {
         }
 
         setAuthState("signup-sent");
+        return;
+      }
+
+      if (result.error.message.toLowerCase().includes("codigo")) {
+        form.setError("activationCode", { message: result.error.message });
+        setAuthState("normal");
         return;
       }
 
@@ -227,6 +236,27 @@ export function LoginPage() {
                         {...form.register("confirmPassword")}
                       />
                     </div>
+                  </Field>
+                ) : null}
+
+                {isSignup ? (
+                  <Field label="Codigo de ativacao" error={form.formState.errors.activationCode?.message} htmlFor="activationCode">
+                    <div className="relative">
+                      <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#667085]" />
+                      <Input
+                        id="activationCode"
+                        type="text"
+                        autoComplete="off"
+                        placeholder="Digite a chave recebida apos a compra"
+                        className="h-12 rounded-md border-[#E4E7EC] pl-10 uppercase tracking-[0.08em]"
+                        aria-invalid={Boolean(form.formState.errors.activationCode)}
+                        aria-describedby={form.formState.errors.activationCode ? "activationCode-error" : undefined}
+                        {...form.register("activationCode")}
+                      />
+                    </div>
+                    <p className="mt-2 text-xs font-semibold leading-5 text-[#667085]">
+                      Essa chave e liberada pela ColliDev apos a contratacao pelo WhatsApp.
+                    </p>
                   </Field>
                 ) : null}
 

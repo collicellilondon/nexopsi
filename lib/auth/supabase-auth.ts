@@ -7,25 +7,35 @@ export async function signInWithEmail(email: string, password: string) {
   } catch {
     return {
       data: null,
-      error: { message: "Supabase não configurado. Verifique as variáveis de ambiente." }
+      error: { message: "Supabase nao configurado. Verifique as variaveis de ambiente." }
     };
   }
 }
 
-export async function signUpWithEmail(email: string, password: string) {
+export async function signUpWithEmail(email: string, password: string, activationCode: string) {
   try {
-    const supabase = createBrowserSupabaseClient();
-    return await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`
-      }
+    const response = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, activationCode })
     });
+
+    const payload = await response.json();
+    if (!response.ok) {
+      return {
+        data: null,
+        error: { message: payload?.error ?? "Nao foi possivel criar a conta agora." }
+      };
+    }
+
+    return {
+      data: payload.data ?? null,
+      error: null
+    };
   } catch {
     return {
       data: null,
-      error: { message: "Não foi possível criar a conta agora." }
+      error: { message: "Nao foi possivel criar a conta agora." }
     };
   }
 }
@@ -40,7 +50,7 @@ export async function signInWithGoogle() {
   } catch {
     return {
       data: null,
-      error: { message: "Login com Google indisponível no momento." }
+      error: { message: "Login com Google indisponivel no momento." }
     };
   }
 }

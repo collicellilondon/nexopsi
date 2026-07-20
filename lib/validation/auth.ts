@@ -4,13 +4,15 @@ export const loginSchema = z.object({
   email: z.string().min(1, "Digite seu e-mail.").email("Informe um endereco de e-mail valido."),
   password: z.string().min(1, "Digite sua senha."),
   confirmPassword: z.string().optional(),
+  activationCode: z.string().optional(),
   remember: z.boolean().default(true)
 });
 
 export const signupSchema = loginSchema
   .extend({
     password: z.string().min(8, "Use pelo menos 8 caracteres."),
-    confirmPassword: z.string().min(1, "Confirme sua senha.")
+    confirmPassword: z.string().min(1, "Confirme sua senha."),
+    activationCode: z.string().min(1, "Informe o codigo de ativacao recebido.")
   })
   .refine((values) => values.password === values.confirmPassword, {
     path: ["confirmPassword"],
