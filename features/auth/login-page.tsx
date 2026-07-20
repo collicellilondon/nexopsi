@@ -157,7 +157,14 @@ export function LoginPage() {
   }
 
   async function onRecovery(values: RecoveryFormValues) {
-    await sendPasswordRecovery(values.email);
+    setAuthState("loading");
+    const result = await sendPasswordRecovery(values.email);
+    if (result.error) {
+      recoveryForm.setError("email", { message: result.error.message });
+      setAuthState("connection");
+      return;
+    }
+
     setAuthState("recovery-sent");
     setRecoveryOpen(false);
   }

@@ -51,7 +51,7 @@ export async function sendPasswordRecovery(email: string) {
   } catch {
     return {
       data: null,
-      error: null
+      error: { message: "Nao foi possivel enviar o email de redefinicao. Verifique o SMTP no Supabase." }
     };
   }
 }
