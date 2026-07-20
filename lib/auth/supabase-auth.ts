@@ -56,6 +56,18 @@ export async function sendPasswordRecovery(email: string) {
   }
 }
 
+export async function updatePassword(password: string) {
+  try {
+    const supabase = createBrowserSupabaseClient();
+    return await supabase.auth.updateUser({ password });
+  } catch {
+    return {
+      data: null,
+      error: { message: "Nao foi possivel redefinir a senha agora." }
+    };
+  }
+}
+
 function getAppUrl() {
   return (process.env.NEXT_PUBLIC_APP_URL || window.location.origin || defaultAppUrl).replace(/\/$/, "");
 }

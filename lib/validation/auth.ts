@@ -23,6 +23,17 @@ export const recoverySchema = z.object({
   email: z.string().min(1, "Digite seu e-mail.").email("Informe um endereco de e-mail valido.")
 });
 
+export const passwordResetSchema = z
+  .object({
+    password: z.string().min(8, "Use pelo menos 8 caracteres."),
+    confirmPassword: z.string().min(1, "Confirme sua nova senha.")
+  })
+  .refine((values) => values.password === values.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "As senhas precisam ser iguais."
+  });
+
 export type LoginFormValues = z.infer<typeof loginSchema>;
 export type SignupFormValues = z.infer<typeof signupSchema>;
 export type RecoveryFormValues = z.infer<typeof recoverySchema>;
+export type PasswordResetFormValues = z.infer<typeof passwordResetSchema>;

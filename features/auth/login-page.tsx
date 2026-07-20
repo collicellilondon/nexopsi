@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,8 +24,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { loginSchema, recoverySchema, signupSchema, type LoginFormValues, type RecoveryFormValues } from "@/lib/validation/auth";
-import { sendPasswordRecovery, signInWithEmail, signUpWithEmail } from "@/lib/auth/supabase-auth";
+import { loginSchema, passwordResetSchema, recoverySchema, signupSchema, type LoginFormValues, type PasswordResetFormValues, type RecoveryFormValues } from "@/lib/validation/auth";
+import { sendPasswordRecovery, signInWithEmail, signUpWithEmail, updatePassword } from "@/lib/auth/supabase-auth";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 type AuthState =
@@ -37,9 +38,11 @@ type AuthState =
   | "unconfirmed"
   | "success"
   | "signup-sent"
-  | "recovery-sent";
+  | "recovery-sent"
+  | "password-reset-ready"
+  | "password-reset-success";
 
-type AuthMode = "signin" | "signup";
+type AuthMode = "signin" | "signup" | "reset";
 
 const salesMessage = "Olá, quero contratar a Nexopsi para minha clínica.";
 const salesWhatsAppUrl = process.env.NEXT_PUBLIC_SALES_WHATSAPP_URL || `https://wa.me/4407726425982?text=${encodeURIComponent(salesMessage)}`;
@@ -53,6 +56,7 @@ export function LoginPage() {
   const [authMode, setAuthMode] = useState<AuthMode>("signin");
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [salesOpen, setSalesOpen] = useState(false);
+  const [resetReady, setResetReady] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -64,8 +68,41 @@ export function LoginPage() {
     defaultValues: { email: "" }
   });
 
+  const resetForm = useForm<PasswordResetFormValues>({
+    resolver: zodResolver(passwordResetSchema),
+    defaultValues: { password: "", confirmPassword: "" }
+  });
+
   const alert = useMemo(() => getAuthAlert(authState), [authState]);
   const isSignup = authMode === "signup";
+  const isReset = authMode === "reset";
+
+  useEffect(() => {
+    const isRecoveryUrl = searchParams.get("modo") === "redefinir-senha" || searchParams.get("type") === "recovery" || window.location.hash.includes("type=recovery");
+    if (!isRecoveryUrl) return;
+
+    setAuthMode("reset");
+    setAuthState("password-reset-ready");
+
+    try {
+      const supabase = createBrowserSupabaseClient();
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) setResetReady(true);
+      });
+
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === "PASSWORD_RECOVERY" || session) {
+          setResetReady(true);
+          setAuthMode("reset");
+          setAuthState("password-reset-ready");
+        }
+      });
+
+      return () => data.subscription.unsubscribe();
+    } catch {
+      setResetReady(false);
+    }
+  }, [searchParams]);
 
   async function onSubmit(values: LoginFormValues) {
     setAuthState("loading");
@@ -125,6 +162,24 @@ export function LoginPage() {
     setRecoveryOpen(false);
   }
 
+  async function onResetPassword(values: PasswordResetFormValues) {
+    setAuthState("loading");
+    const result = await updatePassword(values.password);
+
+    if (!result.error) {
+      setAuthState("password-reset-success");
+      resetForm.reset();
+      setTimeout(() => {
+        setAuthMode("signin");
+        router.replace("/login");
+      }, 1200);
+      return;
+    }
+
+    resetForm.setError("password", { message: result.error.message });
+    setAuthState("password-reset-ready");
+  }
+
   function handleAuthError(message: string) {
     const normalized = message.toLowerCase();
     if (normalized.includes("disabled")) setAuthState("disabled");
@@ -137,6 +192,7 @@ export function LoginPage() {
     setAuthMode(mode);
     setAuthState("normal");
     form.clearErrors();
+    resetForm.clearErrors();
   }
 
   return (
@@ -156,13 +212,13 @@ export function LoginPage() {
                 <div className="mb-6 flex h-24 w-72 items-center overflow-hidden rounded-md bg-white">
                   <Image src="/brand/nexopsi-logo.png" alt="Nexopsi" width={320} height={160} priority className="h-full w-full object-contain" />
                 </div>
-                <h1 className="mt-3 text-3xl font-black tracking-tight text-ink">{isSignup ? "Crie seu acesso" : "Bem-vindo de volta"}</h1>
+                <h1 className="mt-3 text-3xl font-black tracking-tight text-ink">{isReset ? "Crie uma nova senha" : isSignup ? "Crie seu acesso" : "Bem-vindo de volta"}</h1>
                 <p className="mt-2 text-sm leading-6 text-[#667085]">
-                  {isSignup ? "Cadastre seu e-mail para iniciar a experiência Nexopsi." : "Entre para continuar cuidando da sua clínica."}
+                  {isReset ? "Defina uma senha segura para voltar a acessar sua conta Nexopsi." : isSignup ? "Cadastre seu e-mail para iniciar a experiencia Nexopsi." : "Entre para continuar cuidando da sua clinica."}
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 rounded-md bg-white p-1 shadow-line">
+              <div className={cn("grid grid-cols-2 gap-2 rounded-md bg-white p-1 shadow-line", isReset && "hidden")}>
                 <button type="button" onClick={() => switchMode("signin")} className={cn("rounded-md px-3 py-2 text-sm font-black transition", !isSignup ? "bg-primary text-white" : "text-[#667085] hover:bg-primary-soft hover:text-primary")}>
                   Entrar
                 </button>
@@ -173,7 +229,59 @@ export function LoginPage() {
 
               {alert ? <AuthAlert state={authState} title={alert.title} description={alert.description} /> : null}
 
-              <form className="mt-5 space-y-5" onSubmit={form.handleSubmit(onSubmit)} noValidate>
+              {isReset ? (
+                <form className="mt-5 space-y-5" onSubmit={resetForm.handleSubmit(onResetPassword)} noValidate>
+                  {!resetReady ? (
+                    <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-800">
+                      Abra esta tela pelo link recebido no e-mail de redefinicao para liberar a troca da senha.
+                    </div>
+                  ) : null}
+                  <Field label="Nova senha" error={resetForm.formState.errors.password?.message} htmlFor="new-password">
+                    <div className="relative">
+                      <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#667085]" />
+                      <Input
+                        id="new-password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="new-password"
+                        placeholder="Digite a nova senha"
+                        className="h-12 rounded-md border-[#E4E7EC] px-10"
+                        {...resetForm.register("password")}
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-sm p-1 text-[#667085] transition hover:bg-primary-soft hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                        onClick={() => setShowPassword((value) => !value)}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </Field>
+                  <Field label="Confirmar nova senha" error={resetForm.formState.errors.confirmPassword?.message} htmlFor="new-password-confirm">
+                    <div className="relative">
+                      <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#667085]" />
+                      <Input
+                        id="new-password-confirm"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="new-password"
+                        placeholder="Repita a nova senha"
+                        className="h-12 rounded-md border-[#E4E7EC] px-10"
+                        {...resetForm.register("confirmPassword")}
+                      />
+                    </div>
+                  </Field>
+                  <Button type="submit" disabled={authState === "loading" || !resetReady} className="h-12 w-full rounded-md bg-primary text-base transition duration-200 hover:-translate-y-0.5 hover:brightness-110">
+                    {authState === "loading" ? <Spinner /> : null}
+                    Salvar nova senha
+                    {authState !== "loading" ? <ArrowRight className="h-4 w-4" /> : null}
+                  </Button>
+                  <button type="button" className="w-full text-sm font-bold text-primary" onClick={() => switchMode("signin")}>
+                    Voltar para o login
+                  </button>
+                </form>
+              ) : null}
+
+              <form className={cn("mt-5 space-y-5", isReset && "hidden")} onSubmit={form.handleSubmit(onSubmit)} noValidate>
                 <Field label="E-mail" error={form.formState.errors.email?.message} htmlFor="email">
                   <div className="relative">
                     <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#667085]" />
@@ -486,7 +594,7 @@ function Field({ label, error, htmlFor, children }: { label: string; error?: str
 }
 
 function AuthAlert({ state, title, description }: { state: AuthState; title: string; description: string }) {
-  const positive = state === "success" || state === "recovery-sent" || state === "signup-sent";
+  const positive = state === "success" || state === "recovery-sent" || state === "signup-sent" || state === "password-reset-ready" || state === "password-reset-success";
   const connection = state === "connection";
   return (
     <div className={cn("mt-4 flex gap-3 rounded-md border p-3 text-sm", positive ? "border-emerald-200 bg-emerald-50 text-[#176B4D]" : "border-red-100 bg-red-50 text-[#9F2F2F]")}>
@@ -507,7 +615,9 @@ function getAuthAlert(state: AuthState) {
     unconfirmed: { title: "E-mail não confirmado", description: "Confirme seu e-mail antes de acessar." },
     success: { title: "Acesso confirmado", description: "Redirecionando para sua clínica..." },
     "signup-sent": { title: "Cadastro iniciado", description: "Enviamos um e-mail de confirmação. Depois de confirmar, volte para entrar na plataforma." },
-    "recovery-sent": { title: "Link de redefinição enviado", description: "Enviamos um e-mail em português com o link seguro para criar uma nova senha." }
+    "recovery-sent": { title: "Link de redefinição enviado", description: "Enviamos um e-mail em português com o link seguro para criar uma nova senha." },
+    "password-reset-ready": { title: "Redefinicao liberada", description: "Digite e confirme sua nova senha para concluir a troca com seguranca." },
+    "password-reset-success": { title: "Senha redefinida", description: "Sua nova senha foi salva. Voce ja pode entrar novamente na Nexopsi." }
   };
   return alerts[state];
 }
