@@ -229,12 +229,14 @@ export function FinancePanel({ workspaceId, patients = [], searchQuery = "", onN
     }
 
     const supabase = createBrowserSupabaseClient();
-    const { data, error } = await supabase.from("service_prices").insert(mapPriceToDatabase(nextPrice, workspaceId)).select("id, name, duration, value, recurrence, active").single();
+    const { data, error } = await supabase
+      .rpc("save_service_prices", { price_items: [mapPriceToDatabase(nextPrice, workspaceId)] });
     if (error) {
       onNotify(`Nao foi possivel salvar o valor no Supabase: ${error.message}`);
       return;
     }
-    setPrices((current) => [mapDatabasePrice(data), ...current.filter((item) => item.id !== nextPrice.id)]);
+    const saved = Array.isArray(data) ? data.map(mapDatabasePrice) : [];
+    setPrices((current) => [...saved, ...current.filter((item) => item.id !== nextPrice.id && !saved.some((savedItem) => savedItem.name === item.name))]);
     onNotify(`Valor "${price.name}" salvo no Supabase.`);
   }
 
@@ -246,7 +248,7 @@ export function FinancePanel({ workspaceId, patients = [], searchQuery = "", onN
 
     const supabase = createBrowserSupabaseClient();
     const payload = prices.map((price) => mapPriceToDatabase(price, workspaceId));
-    const { data, error } = await supabase.from("service_prices").upsert(payload, { onConflict: "organization_id,name" }).select("id, name, duration, value, recurrence, active");
+    const { data, error } = await supabase.rpc("save_service_prices", { price_items: payload });
     if (error) {
       onNotify(`Nao foi possivel atualizar os valores: ${error.message}`);
       return;

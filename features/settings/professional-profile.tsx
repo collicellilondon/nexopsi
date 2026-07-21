@@ -20,7 +20,7 @@ export type ProfessionalProfileData = {
 type ProfessionalProfileProps = {
   initialProfile: ProfessionalProfileData;
   onNotify: (message: string) => void;
-  onSave: (profile: ProfessionalProfileData) => void | Promise<void>;
+  onSave: (profile: ProfessionalProfileData) => boolean | Promise<boolean>;
 };
 
 export function ProfessionalProfile({ initialProfile, onNotify, onSave }: ProfessionalProfileProps) {
@@ -38,8 +38,8 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave }: Profes
   }
 
   async function saveProfile() {
-    await onSave(profile);
-    setSaved(true);
+    const success = await onSave(profile);
+    setSaved(success);
   }
 
   function changePhoto(file?: File) {

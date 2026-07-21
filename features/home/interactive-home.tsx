@@ -177,51 +177,40 @@ export function InteractiveHome() {
       const userId = userData.user?.id;
       if (!userId) {
         notify("Cadastro salvo nesta tela, mas entre novamente para gravar no Supabase.");
-        return;
+        return false;
       }
 
       const organizationId = workspaceId ?? (await ensureWorkspace(supabase, profile.name || "Profissional Nexopsi"));
       setWorkspaceId(organizationId);
 
-      const profilePayload = {
-        organization_id: organizationId,
-        profile_id: userId,
-        full_name: profile.name || "Profissional Nexopsi",
-        avatar_url: profile.photoUrl || null,
-        crp: profile.register || null,
-        phone: profile.phone || null,
-        email: profile.email || userData.user?.email || null,
-        specialty: profile.specialty || null,
-        bio: profile.bio || null
-      };
-
-      const { data: savedProfile, error } = await supabase
-        .from("professional_profiles")
-        .upsert(profilePayload, { onConflict: "organization_id,profile_id" })
-        .select("full_name, avatar_url, crp, phone, email, specialty, bio")
+      const { data: rpcProfile, error: rpcError } = await supabase
+        .rpc("save_professional_profile", {
+          profile_name: profile.name || "Profissional Nexopsi",
+          profile_register: profile.register || null,
+          profile_email: profile.email || userData.user?.email || null,
+          profile_phone: profile.phone || null,
+          profile_specialty: profile.specialty || null,
+          profile_bio: profile.bio || null,
+          profile_photo_url: profile.photoUrl || null
+        })
         .single();
 
-      if (error) {
-        notify(`Nao foi possivel salvar o cadastro profissional no Supabase: ${error.message}`);
-        return;
+      if (rpcError) {
+        notify(`Nao foi possivel salvar o cadastro profissional no Supabase: ${rpcError.message}`);
+        return false;
       }
 
-      const { error: baseProfileError } = await supabase.from("profiles").upsert(
-        {
-          id: userId,
-          full_name: profilePayload.full_name,
-          avatar_url: profilePayload.avatar_url,
-          crp: profilePayload.crp,
-          phone: profilePayload.phone,
-          email: profilePayload.email,
-          specialty: profilePayload.specialty,
-          bio: profilePayload.bio
-        },
-        { onConflict: "id" }
-      );
-
-      if (baseProfileError) {
-        notify(`Cadastro profissional salvo, mas o resumo do perfil nao foi atualizado: ${baseProfileError.message}`);
+      if (rpcProfile) {
+        const profileRow = rpcProfile as DatabaseProfessionalProfile;
+        setProfessionalProfile({
+          name: profileRow.full_name ?? profile.name,
+          register: profileRow.crp ?? "",
+          email: profileRow.email ?? profile.email,
+          phone: profileRow.phone ?? "",
+          specialty: profileRow.specialty ?? profile.specialty,
+          bio: profileRow.bio ?? profile.bio,
+          photoUrl: profileRow.avatar_url ?? ""
+        });
       }
 
       const currentMetadata = userData.user?.user_metadata ?? {};
@@ -240,24 +229,14 @@ export function InteractiveHome() {
 
       if (metadataResult.error) {
         notify(`Cadastro salvo no Supabase, mas os metadados do login nao foram atualizados: ${metadataResult.error.message}`);
+      } else {
+        notify(`Cadastro profissional salvo no Supabase para ${profile.name || "profissional"}.`);
       }
 
-      if (savedProfile) {
-        const profileRow = savedProfile as DatabaseProfessionalProfile;
-        setProfessionalProfile({
-          name: profileRow.full_name ?? profile.name,
-          register: profileRow.crp ?? "",
-          email: profileRow.email ?? profile.email,
-          phone: profileRow.phone ?? "",
-          specialty: profileRow.specialty ?? profile.specialty,
-          bio: profileRow.bio ?? profile.bio,
-          photoUrl: profileRow.avatar_url ?? ""
-        });
-      }
-
-      notify(`Cadastro profissional salvo no Supabase para ${profile.name || "profissional"}.`);
+      return true;
     } catch {
       notify("Não foi possível conectar ao Supabase para salvar o cadastro profissional.");
+      return false;
     }
   }
 

@@ -309,7 +309,7 @@ create index if not exists professional_profiles_org_profile_idx
 create index if not exists service_prices_organization_idx
   on service_prices (organization_id, active);
 
-create unique index if not exists service_prices_organization_name_unique
+create index if not exists service_prices_organization_name_idx
   on service_prices (organization_id, name);
 
 create index if not exists invoices_organization_status_idx
@@ -756,3 +756,199 @@ end;
 $$;
 
 grant execute on function save_professional_profile(text, text, text, text, text, text, text) to authenticated;
+
+create or replace function save_professional_profile(
+  profile_name text default null,
+  profile_register text default null,
+  profile_email text default null,
+  profile_phone text default null,
+  profile_specialty text default null,
+  profile_bio text default null,
+  profile_photo_url text default null
+)
+returns table (
+  full_name text,
+  avatar_url text,
+  crp text,
+  phone text,
+  email text,
+  specialty text,
+  bio text
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  workspace_id uuid;
+  resolved_name text;
+begin
+  if current_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  resolved_name := coalesce(nullif(profile_name, ''), 'Profissional Nexopsi');
+  workspace_id := ensure_personal_workspace(resolved_name);
+
+  insert into profiles (id, full_name, avatar_url, crp, phone, email, specialty, bio)
+  values (
+    current_user_id,
+    resolved_name,
+    nullif(profile_photo_url, ''),
+    nullif(profile_register, ''),
+    nullif(profile_phone, ''),
+    coalesce(nullif(profile_email, ''), auth.jwt() ->> 'email'),
+    nullif(profile_specialty, ''),
+    nullif(profile_bio, '')
+  )
+  on conflict (id) do update
+    set full_name = excluded.full_name,
+        avatar_url = excluded.avatar_url,
+        crp = excluded.crp,
+        phone = excluded.phone,
+        email = excluded.email,
+        specialty = excluded.specialty,
+        bio = excluded.bio,
+        updated_at = now();
+
+  insert into professional_profiles (
+    organization_id,
+    profile_id,
+    full_name,
+    avatar_url,
+    crp,
+    phone,
+    email,
+    specialty,
+    bio
+  )
+  values (
+    workspace_id,
+    current_user_id,
+    resolved_name,
+    nullif(profile_photo_url, ''),
+    nullif(profile_register, ''),
+    nullif(profile_phone, ''),
+    coalesce(nullif(profile_email, ''), auth.jwt() ->> 'email'),
+    nullif(profile_specialty, ''),
+    nullif(profile_bio, '')
+  )
+  on conflict (organization_id, profile_id) do update
+    set full_name = excluded.full_name,
+        avatar_url = excluded.avatar_url,
+        crp = excluded.crp,
+        phone = excluded.phone,
+        email = excluded.email,
+        specialty = excluded.specialty,
+        bio = excluded.bio,
+        updated_at = now();
+
+  return query
+  select pp.full_name, pp.avatar_url, pp.crp, pp.phone, pp.email, pp.specialty, pp.bio
+    from professional_profiles pp
+   where pp.organization_id = workspace_id
+     and pp.profile_id = current_user_id
+   limit 1;
+end;
+$$;
+
+grant execute on function save_professional_profile(text, text, text, text, text, text, text) to authenticated;
+
+create or replace function save_service_prices(price_items jsonb)
+returns table (
+  id uuid,
+  name text,
+  duration text,
+  value numeric,
+  recurrence text,
+  active boolean
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  workspace_id uuid;
+  item jsonb;
+  candidate_id uuid;
+  existing_id uuid;
+  resolved_name text;
+  resolved_duration text;
+  resolved_value numeric;
+  resolved_recurrence text;
+  resolved_active boolean;
+begin
+  if auth.uid() is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  workspace_id := ensure_personal_workspace(null);
+
+  for item in select * from jsonb_array_elements(coalesce(price_items, '[]'::jsonb))
+  loop
+    resolved_name := nullif(item ->> 'name', '');
+    if resolved_name is null then
+      continue;
+    end if;
+
+    candidate_id := null;
+    begin
+      candidate_id := nullif(item ->> 'id', '')::uuid;
+    exception when others then
+      candidate_id := null;
+    end;
+
+    begin
+      resolved_value := coalesce(nullif(item ->> 'value', '')::numeric, 0);
+    exception when others then
+      resolved_value := 0;
+    end;
+
+    resolved_duration := coalesce(nullif(item ->> 'duration', ''), '50 min');
+    resolved_recurrence := coalesce(nullif(item ->> 'recurrence', ''), 'Por sessao');
+    resolved_active := coalesce((item ->> 'active')::boolean, true);
+
+    existing_id := null;
+    if candidate_id is not null then
+      select sp.id into existing_id
+        from service_prices sp
+       where sp.organization_id = workspace_id
+         and sp.id = candidate_id
+       limit 1;
+    end if;
+
+    if existing_id is null then
+      select sp.id into existing_id
+        from service_prices sp
+       where sp.organization_id = workspace_id
+         and lower(sp.name) = lower(resolved_name)
+       order by sp.created_at asc
+       limit 1;
+    end if;
+
+    if existing_id is null then
+      insert into service_prices (organization_id, name, duration, value, recurrence, active)
+      values (workspace_id, resolved_name, resolved_duration, resolved_value, resolved_recurrence, resolved_active);
+    else
+      update service_prices
+         set name = resolved_name,
+             duration = resolved_duration,
+             value = resolved_value,
+             recurrence = resolved_recurrence,
+             active = resolved_active,
+             updated_at = now()
+       where service_prices.id = existing_id
+         and service_prices.organization_id = workspace_id;
+    end if;
+  end loop;
+
+  return query
+  select sp.id, sp.name, sp.duration, sp.value, sp.recurrence, sp.active
+    from service_prices sp
+   where sp.organization_id = workspace_id
+   order by sp.active desc, sp.created_at asc;
+end;
+$$;
+
+grant execute on function save_service_prices(jsonb) to authenticated;
