@@ -91,6 +91,10 @@ function resolveAppUrl(request: Request) {
 }
 
 function translateSignupError(message: string) {
+  if (!message || message.trim() === "{}") {
+    return "O Supabase recusou o cadastro sem mensagem. Isso costuma acontecer quando o SMTP customizado do Auth esta com remetente, dominio, usuario, senha ou porta incorretos.";
+  }
+
   const normalized = message.toLowerCase();
 
   if (normalized.includes("already") || normalized.includes("registered") || normalized.includes("exists")) {

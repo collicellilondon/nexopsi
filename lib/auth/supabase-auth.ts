@@ -45,7 +45,12 @@ export async function signUpWithEmail(email: string, password: string, activatio
 function readPayloadError(payload: unknown) {
   if (!payload || typeof payload !== "object") return "Nao foi possivel criar a conta agora.";
   const error = (payload as { error?: unknown }).error;
-  if (typeof error === "string" && error.trim()) return error;
+  if (typeof error === "string" && error.trim()) {
+    if (error.trim() === "{}") {
+      return "O Supabase recusou o cadastro sem mensagem. Verifique o SMTP customizado do Auth, principalmente remetente, dominio, usuario, senha/API key e porta.";
+    }
+    return error;
+  }
   if (error && typeof error === "object") {
     try {
       const serialized = JSON.stringify(error);
