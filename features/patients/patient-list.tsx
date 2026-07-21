@@ -36,6 +36,7 @@ export function PatientList({ patients, searchQuery = "", onNotify }: PatientLis
   const [status, setStatus] = useState<PatientStatus | "todos">("todos");
   const [showOnlyDebt, setShowOnlyDebt] = useState(false);
   const [sortAsc, setSortAsc] = useState(true);
+  const [openActions, setOpenActions] = useState<string | null>(null);
 
   useEffect(() => {
     setQuery(searchQuery);
@@ -116,7 +117,7 @@ export function PatientList({ patients, searchQuery = "", onNotify }: PatientLis
           </div>
         ) : (
           <div className="mt-5 overflow-hidden rounded-lg border border-border">
-            <div className="hidden grid-cols-[1.4fr_0.9fr_0.9fr_0.8fr_0.7fr_130px] gap-4 bg-background px-4 py-3 text-xs font-black uppercase tracking-wide text-ink-muted lg:grid">
+            <div className="hidden grid-cols-[1.4fr_0.9fr_0.9fr_0.8fr_0.7fr_190px] gap-4 bg-background px-4 py-3 text-xs font-black uppercase tracking-wide text-ink-muted lg:grid">
               <button type="button" className="flex items-center gap-2 text-left" onClick={() => setSortAsc((value) => !value)}>
                 Paciente <ArrowUpDown className="h-3.5 w-3.5" />
               </button>
@@ -128,7 +129,7 @@ export function PatientList({ patients, searchQuery = "", onNotify }: PatientLis
             </div>
             <div className="divide-y divide-border bg-white">
               {filteredPatients.map((patient) => (
-                <div key={patient.id} className="grid gap-4 px-4 py-4 lg:grid-cols-[1.4fr_0.9fr_0.9fr_0.8fr_0.7fr_130px] lg:items-center">
+                <div key={patient.id} className="grid gap-4 px-4 py-4 lg:grid-cols-[1.4fr_0.9fr_0.9fr_0.8fr_0.7fr_190px] lg:items-center">
                   <button type="button" onClick={() => onNotify(`Ficha de ${patient.name}: ${patient.mainComplaint ?? "sem queixa principal cadastrada"}.`)} className="text-left">
                     <p className="font-black text-ink">{patient.name}</p>
                     <p className="mt-1 text-sm text-ink-muted">{patient.age} anos • CPF {patient.cpf ?? "não informado"}</p>
@@ -150,11 +151,19 @@ export function PatientList({ patients, searchQuery = "", onNotify }: PatientLis
                     <WalletCards className="h-4 w-4 text-secondary" />
                     {brl.format(patient.pendingBalance)}
                   </button>
-                  <div className="flex gap-2">
+                  <div className="relative flex gap-2">
                     <Button type="button" variant="outline" size="sm" onClick={() => cycleStatus(patient.id)}>Status</Button>
                     <Button type="button" variant="ghost" size="icon" aria-label={`Ações de ${patient.name}`} onClick={() => onNotify(`Ficha completa aberta para ${patient.name}.`)}>
                       <MoreHorizontal className="h-5 w-5" />
                     </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setOpenActions((current) => (current === patient.id ? null : patient.id))}>Mais</Button>
+                    {openActions === patient.id ? (
+                      <div className="absolute right-0 top-10 z-20 w-52 rounded-md border border-border bg-white p-2 shadow-[0_18px_45px_rgba(15,23,42,0.18)]">
+                        <button type="button" className="w-full rounded-sm px-3 py-2 text-left text-sm font-bold text-ink hover:bg-primary-soft" onClick={() => { onNotify(`Ficha completa aberta para ${patient.name}.`); setOpenActions(null); }}>Abrir ficha</button>
+                        <button type="button" className="w-full rounded-sm px-3 py-2 text-left text-sm font-bold text-ink hover:bg-primary-soft" onClick={() => { onNotify(`Agenda filtrada para ${patient.name}.`); setOpenActions(null); }}>Ver agenda</button>
+                        <button type="button" className="w-full rounded-sm px-3 py-2 text-left text-sm font-bold text-ink hover:bg-primary-soft" onClick={() => { onNotify(`Financeiro aberto para ${patient.name}.`); setOpenActions(null); }}>Ver financeiro</button>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               ))}

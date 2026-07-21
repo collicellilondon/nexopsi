@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SegmentedTabs } from "@/components/ui/tabs";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { brl } from "@/lib/utils";
 import type { Patient } from "@/lib/types";
 
@@ -35,6 +36,7 @@ type Invoice = {
   id: string;
   patientId?: string;
   patient: string;
+  patientCpf?: string;
   patientPhone?: string;
   patientEmail?: string;
   description: string;
@@ -100,7 +102,7 @@ const kindLabel: Record<InvoiceKind, string> = {
   avulsa: "Avulsa"
 };
 
-export function FinancePanel({ patients = [], searchQuery = "", onNotify }: { patients?: Patient[]; searchQuery?: string; onNotify: (message: string) => void }) {
+export function FinancePanel({ workspaceId, patients = [], searchQuery = "", onNotify }: { workspaceId?: string | null; patients?: Patient[]; searchQuery?: string; onNotify: (message: string) => void }) {
   const [activeTab, setActiveTab] = useState<FinanceTab>("Visao geral");
   const [invoices, setInvoices] = useState(initialInvoices);
   const [prices, setPrices] = useState(initialPrices);
@@ -115,6 +117,30 @@ export function FinancePanel({ patients = [], searchQuery = "", onNotify }: { pa
     setQuery(searchQuery);
     if (searchQuery) setActiveTab("Faturas");
   }, [searchQuery]);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+
+    async function loadFinanceData() {
+      try {
+        const supabase = createBrowserSupabaseClient();
+        const [{ data: savedPrices, error: pricesError }, { data: savedInvoices, error: invoicesError }] = await Promise.all([
+          supabase.from("service_prices").select("id, name, duration, value, recurrence, active").eq("organization_id", workspaceId).order("created_at", { ascending: true }),
+          supabase.from("invoices").select("id, patient_id, patient_name, patient_cpf, patient_phone, patient_email, description, due_date, amount, status, method, kind, installments").eq("organization_id", workspaceId).order("created_at", { ascending: false })
+        ]);
+
+        if (pricesError) onNotify(`Nao foi possivel carregar valores: ${pricesError.message}`);
+        if (invoicesError) onNotify(`Nao foi possivel carregar faturas: ${invoicesError.message}`);
+
+        if (savedPrices && savedPrices.length > 0) setPrices(savedPrices.map(mapDatabasePrice));
+        if (savedInvoices) setInvoices(savedInvoices.map(mapDatabaseInvoice));
+      } catch {
+        onNotify("Nao foi possivel conectar ao Supabase para carregar o financeiro.");
+      }
+    }
+
+    loadFinanceData();
+  }, [workspaceId, onNotify]);
 
   const filtered = useMemo(() => {
     return invoices.filter((invoice) => {
@@ -155,28 +181,78 @@ export function FinancePanel({ patients = [], searchQuery = "", onNotify }: { pa
     { month: "Jul", receita: totals.paid, atraso: totals.overdue }
   ];
 
-  function markPaid(id: string) {
+  async function markPaid(id: string) {
     setInvoices((current) => current.map((invoice) => (invoice.id === id ? { ...invoice, status: "paga" } : invoice)));
+    if (workspaceId) {
+      const supabase = createBrowserSupabaseClient();
+      await supabase.from("invoices").update({ status: "paga" }).eq("id", id).eq("organization_id", workspaceId);
+    }
     onNotify("Fatura marcada como paga e recibo liberado.");
   }
 
-  function cancelInvoice(id: string) {
+  async function cancelInvoice(id: string) {
     setInvoices((current) => current.map((invoice) => (invoice.id === id ? { ...invoice, status: "cancelada" } : invoice)));
+    if (workspaceId) {
+      const supabase = createBrowserSupabaseClient();
+      await supabase.from("invoices").update({ status: "cancelada" }).eq("id", id).eq("organization_id", workspaceId);
+    }
     onNotify("Fatura cancelada.");
   }
 
-  function saveInvoice(invoice: Omit<Invoice, "id">) {
+  async function saveInvoice(invoice: Omit<Invoice, "id">) {
     const nextInvoice = { ...invoice, id: `fat-${Date.now()}` };
     setInvoices((current) => [nextInvoice, ...current]);
     setInvoiceModalOpen(false);
     setActiveTab("Faturas");
-    onNotify(`Fatura de ${brl.format(invoice.amount)} criada para ${invoice.patient}.`);
+    if (!workspaceId) {
+      onNotify("Fatura criada nesta tela. Aguarde o workspace carregar para salvar no Supabase.");
+      return;
+    }
+
+    const supabase = createBrowserSupabaseClient();
+    const { data, error } = await supabase.from("invoices").insert(mapInvoiceToDatabase(nextInvoice, workspaceId)).select("id, patient_id, patient_name, patient_cpf, patient_phone, patient_email, description, due_date, amount, status, method, kind, installments").single();
+    if (error) {
+      onNotify(`Nao foi possivel salvar a fatura no Supabase: ${error.message}`);
+      return;
+    }
+    setInvoices((current) => [mapDatabaseInvoice(data), ...current.filter((item) => item.id !== nextInvoice.id)]);
+    onNotify(`Fatura de ${brl.format(invoice.amount)} salva para ${invoice.patient}.`);
   }
 
-  function savePrice(price: Omit<ServicePrice, "id" | "active">) {
-    setPrices((current) => [{ ...price, id: `preco-${Date.now()}`, active: true }, ...current]);
+  async function savePrice(price: Omit<ServicePrice, "id" | "active">) {
+    const nextPrice = { ...price, id: `preco-${Date.now()}`, active: true };
+    setPrices((current) => [nextPrice, ...current]);
     setPriceModalOpen(false);
-    onNotify(`Valor "${price.name}" cadastrado.`);
+    if (!workspaceId) {
+      onNotify(`Valor "${price.name}" cadastrado nesta tela. Aguarde o workspace carregar para salvar no Supabase.`);
+      return;
+    }
+
+    const supabase = createBrowserSupabaseClient();
+    const { data, error } = await supabase.from("service_prices").insert(mapPriceToDatabase(nextPrice, workspaceId)).select("id, name, duration, value, recurrence, active").single();
+    if (error) {
+      onNotify(`Nao foi possivel salvar o valor no Supabase: ${error.message}`);
+      return;
+    }
+    setPrices((current) => [mapDatabasePrice(data), ...current.filter((item) => item.id !== nextPrice.id)]);
+    onNotify(`Valor "${price.name}" salvo no Supabase.`);
+  }
+
+  async function saveAllPrices() {
+    if (!workspaceId) {
+      onNotify("Aguarde o workspace carregar para salvar os valores.");
+      return;
+    }
+
+    const supabase = createBrowserSupabaseClient();
+    const payload = prices.map((price) => mapPriceToDatabase(price, workspaceId));
+    const { data, error } = await supabase.from("service_prices").upsert(payload, { onConflict: "id" }).select("id, name, duration, value, recurrence, active");
+    if (error) {
+      onNotify(`Nao foi possivel atualizar os valores: ${error.message}`);
+      return;
+    }
+    setPrices((data ?? []).map(mapDatabasePrice));
+    onNotify("Valores atualizados e salvos no Supabase.");
   }
 
   function togglePrice(id: string) {
@@ -255,7 +331,7 @@ export function FinancePanel({ patients = [], searchQuery = "", onNotify }: { pa
       </div>
 
       {activeTab === "Visao geral" ? <OverviewTab chartData={chartData} monthlyData={monthlyData} totals={totals} onNotify={onNotify} /> : null}
-      {activeTab === "Valores" ? <PricesTab prices={prices} onToggle={togglePrice} onChangeValue={updatePriceValue} onCreate={() => setPriceModalOpen(true)} /> : null}
+      {activeTab === "Valores" ? <PricesTab prices={prices} onToggle={togglePrice} onChangeValue={updatePriceValue} onCreate={() => setPriceModalOpen(true)} onSaveAll={saveAllPrices} /> : null}
       {activeTab === "Pagamentos" ? <PaymentsTab methods={methods} onToggle={toggleMethod} onNotify={onNotify} /> : null}
       {activeTab === "Faturas" ? (
         <InvoicesTab
@@ -276,7 +352,7 @@ export function FinancePanel({ patients = [], searchQuery = "", onNotify }: { pa
 
       {invoiceModalOpen ? <InvoiceModal patients={patients} prices={prices} methods={methods} onClose={() => setInvoiceModalOpen(false)} onSave={saveInvoice} /> : null}
       {priceModalOpen ? <PriceModal onClose={() => setPriceModalOpen(false)} onSave={savePrice} /> : null}
-      {printInvoice ? <PrintableInvoice invoice={printInvoice} onClose={() => setPrintInvoice(null)} /> : null}
+      {printInvoice ? <ModernPrintableInvoice invoice={printInvoice} onClose={() => setPrintInvoice(null)} /> : null}
     </div>
   );
 }
@@ -362,27 +438,55 @@ function PricesTab({
   prices,
   onToggle,
   onChangeValue,
-  onCreate
+  onCreate,
+  onSaveAll
 }: {
   prices: ServicePrice[];
   onToggle: (id: string) => void;
   onChangeValue: (id: string, value: number) => void;
   onCreate: () => void;
+  onSaveAll: () => void;
 }) {
+  const activePrices = prices.filter((price) => price.active);
+  const averageValue = activePrices.length > 0 ? activePrices.reduce((sum, price) => sum + price.value, 0) / activePrices.length : 0;
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <CardTitle>Valores das sessoes e planos</CardTitle>
-            <CardDescription>Defina quanto a clinica cobra por sessao, avaliacao, mensalidade ou pacote.</CardDescription>
+    <div className="grid gap-5 xl:grid-cols-[0.82fr_1.18fr]">
+      <Card>
+        <CardHeader>
+          <CardTitle>Tabela de valores</CardTitle>
+          <CardDescription>Configure os preços usados em faturas, mensalidades e pacotes.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <SummaryItem title="Valores ativos" value={String(activePrices.length)} description="Opções disponíveis para faturar" />
+          <SummaryItem title="Valor médio" value={brl.format(averageValue)} description="Média dos serviços ativos" />
+          <SummaryItem title="Maior valor" value={brl.format(Math.max(0, ...prices.map((price) => price.value)))} description="Referência máxima cadastrada" />
+          <div className="grid gap-2 pt-2">
+            <Button type="button" onClick={onSaveAll}>
+              <CheckCircle2 className="h-4 w-4" />
+              Salvar alterações
+            </Button>
+            <Button type="button" variant="outline" onClick={onCreate}>
+              <Plus className="h-4 w-4" />
+              Novo valor
+            </Button>
           </div>
-          <Button type="button" onClick={onCreate}><Plus className="h-4 w-4" />Cadastrar valor</Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <CardTitle>Serviços cobrados</CardTitle>
+            <CardDescription>Edite valores, ative/desative serviços e salve tudo no Supabase.</CardDescription>
+          </div>
+          <Button type="button" variant="outline" onClick={onSaveAll}><CheckCircle2 className="h-4 w-4" />Atualizar e salvar</Button>
         </div>
       </CardHeader>
       <CardContent className="grid gap-4 lg:grid-cols-2">
         {prices.map((price) => (
-          <div key={price.id} className="rounded-lg border border-border bg-background p-4">
+          <div key={price.id} className="rounded-lg border border-border bg-white p-4 shadow-line">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -409,6 +513,7 @@ function PricesTab({
         ))}
       </CardContent>
     </Card>
+    </div>
   );
 }
 
@@ -585,6 +690,7 @@ function InvoiceModal({
   const [selectedPatientId, setSelectedPatientId] = useState(patients[0]?.id ?? "");
   const selectedPatient = patients.find((patient) => patient.id === selectedPatientId);
   const [patient, setPatient] = useState(selectedPatient?.name ?? "");
+  const [patientCpf, setPatientCpf] = useState(selectedPatient?.cpf ?? "");
   const [patientPhone, setPatientPhone] = useState(selectedPatient?.phone ?? "");
   const [patientEmail, setPatientEmail] = useState(selectedPatient?.email ?? "");
   const [selectedPriceId, setSelectedPriceId] = useState(activePrices[0]?.id ?? "");
@@ -611,11 +717,13 @@ function InvoiceModal({
     setSelectedPatientId(id);
     if (!nextPatient) {
       setPatient("");
+      setPatientCpf("");
       setPatientPhone("");
       setPatientEmail("");
       return;
     }
     setPatient(nextPatient.name);
+    setPatientCpf(nextPatient.cpf ?? "");
     setPatientPhone(nextPatient.phone);
     setPatientEmail(nextPatient.email);
   }
@@ -657,6 +765,7 @@ function InvoiceModal({
           </div>
 
           <Field label="Nome na fatura"><Input value={patient} onChange={(event) => setPatient(event.target.value)} placeholder="Nome do paciente" /></Field>
+          <Field label="CPF"><Input value={patientCpf} onChange={(event) => setPatientCpf(event.target.value)} placeholder="000.000.000-00" /></Field>
           <Field label="WhatsApp do paciente"><Input value={patientPhone} onChange={(event) => setPatientPhone(event.target.value)} placeholder="5511999999999" /></Field>
           <Field label="E-mail do paciente"><Input value={patientEmail} onChange={(event) => setPatientEmail(event.target.value)} placeholder="paciente@email.com" /></Field>
           <label className="block text-sm font-bold text-ink">
@@ -696,7 +805,7 @@ function InvoiceModal({
           <Field label="Parcelas / recorrencia"><Input value={installments} onChange={(event) => setInstallments(event.target.value)} placeholder="1x, 4 sessoes, mensal recorrente" /></Field>
           <div className="flex flex-col justify-end gap-3 border-t border-border pt-4 md:col-span-2 sm:flex-row">
             <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
-            <Button type="button" onClick={() => onSave({ patientId: selectedPatientId || undefined, patient: patient || "Paciente a definir", patientPhone, patientEmail, description: description || "Cobranca clinica", dueDate, amount, status, method, kind, installments })}>Salvar fatura</Button>
+            <Button type="button" onClick={() => onSave({ patientId: selectedPatientId || undefined, patient: patient || "Paciente a definir", patientCpf, patientPhone, patientEmail, description: description || "Cobranca clinica", dueDate, amount, status, method, kind, installments })}>Salvar fatura</Button>
           </div>
         </CardContent>
       </Card>
@@ -837,6 +946,101 @@ function PrintableInvoice({ invoice, onClose }: { invoice: Invoice; onClose: () 
   );
 }
 
+function ModernPrintableInvoice({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
+  const issuedAt = new Date();
+  const dueDate = new Date(invoice.dueDate);
+
+  return (
+    <div className="print-sheet fixed inset-0 z-[60] overflow-y-auto bg-slate-100 p-6 print:bg-white print:p-0">
+      <div className="mx-auto min-h-[1120px] max-w-4xl bg-white px-14 py-12 text-[#071B3A] shadow-[0_24px_80px_rgba(15,23,42,0.18)] print:min-h-screen print:shadow-none">
+        <header className="grid grid-cols-[1fr_230px] gap-10">
+          <div>
+            <div className="flex h-28 w-80 items-center overflow-hidden">
+              <Image src="/brand/nexopsi-logo.png" alt="Nexopsi" width={360} height={160} priority className="h-full w-full object-contain object-left" />
+            </div>
+            <p className="mt-2 pl-28 text-sm font-semibold text-slate-500">Plataforma para Psicologos</p>
+          </div>
+          <div>
+            <h1 className="text-4xl font-black uppercase tracking-tight">Fatura</h1>
+            <p className="mt-2 text-lg text-slate-600"># {invoice.id}</p>
+            <p className="mt-8 text-xs font-black uppercase tracking-[0.18em] text-slate-500">Data de emissao</p>
+            <p className="mt-2 text-xl">{issuedAt.toLocaleDateString("pt-BR")}</p>
+            <p className="mt-6 text-xs font-black uppercase tracking-[0.18em] text-slate-500">Vencimento</p>
+            <p className="mt-2 text-xl">{dueDate.toLocaleDateString("pt-BR")}</p>
+            <p className="mt-6 text-xs font-black uppercase tracking-[0.18em] text-slate-500">Status</p>
+            <span className="mt-2 inline-flex rounded-full bg-[#FFD94D] px-5 py-2 text-sm font-black uppercase">{statusLabel[invoice.status]}</span>
+          </div>
+        </header>
+
+        <div className="my-12 h-px bg-slate-200" />
+
+        <section className="grid grid-cols-[0.9fr_1.1fr] gap-10">
+          <div className="border-r border-slate-200 pr-10">
+            <p className="text-sm font-black uppercase tracking-[0.18em]">Cliente</p>
+            <h2 className="mt-8 text-3xl font-black">{invoice.patient}</h2>
+            <div className="mt-8 space-y-5 text-lg">
+              <div><p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">CPF</p><p>{invoice.patientCpf || "Nao informado"}</p></div>
+              <div><p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">E-mail</p><p>{invoice.patientEmail || "Nao informado"}</p></div>
+              <div><p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Telefone</p><p>{invoice.patientPhone || "Nao informado"}</p></div>
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.18em]">Pagamento</p>
+            <div className="mt-8 grid grid-cols-[1fr_220px] gap-8">
+              <div className="space-y-6 text-lg">
+                <div><p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Metodo</p><p className="uppercase">{invoice.method}</p></div>
+                <div><p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Parcelas</p><p>{invoice.installments || "1x"}</p></div>
+                <div><p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Chave Pix</p><p>4407726425982</p></div>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white p-4 text-center">
+                <p className="mb-3 text-xs font-black uppercase tracking-[0.12em]">QR Code Pix</p>
+                <div className="grid aspect-square place-items-center bg-[repeating-linear-gradient(45deg,#111_0_4px,#fff_4px_8px)] text-[10px] font-black text-white">PIX</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-12 overflow-hidden rounded-lg border border-slate-200">
+          <div className="grid grid-cols-[1fr_170px_190px_190px] bg-[#071B3A] px-6 py-5 text-sm font-black uppercase tracking-[0.12em] text-white">
+            <span>Itens da cobranca</span><span className="text-center">Quantidade</span><span className="text-center">Valor unitario</span><span className="text-right">Valor total</span>
+          </div>
+          <div className="grid grid-cols-[1fr_170px_190px_190px] px-6 py-8 text-lg">
+            <span>{invoice.description}</span><span className="text-center">1</span><span className="text-center">{brl.format(invoice.amount)}</span><span className="text-right">{brl.format(invoice.amount)}</span>
+          </div>
+        </section>
+
+        <section className="mt-10 grid grid-cols-[1fr_390px] gap-10">
+          <div className="pt-28">
+            <p className="text-sm font-black uppercase tracking-[0.18em]">Observacoes</p>
+            <p className="mt-6 text-lg leading-8 text-slate-700">Obrigado pela confianca.<br />Esta cobranca foi emitida automaticamente pela plataforma Nexopsi.</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-7 text-lg">
+            <div className="space-y-4">
+              <p className="flex justify-between"><span>Subtotal</span><span>{brl.format(invoice.amount)}</span></p>
+              <p className="flex justify-between"><span>Desconto</span><span>{brl.format(0)}</span></p>
+              <p className="flex justify-between"><span>Taxas</span><span>{brl.format(0)}</span></p>
+            </div>
+            <div className="mt-7 border-t border-slate-200 pt-7">
+              <p className="flex items-end justify-between font-black"><span className="text-xl uppercase">Total</span><span className="text-4xl">{brl.format(invoice.amount)}</span></p>
+            </div>
+          </div>
+        </section>
+
+        <footer className="mt-14 grid grid-cols-[1.4fr_0.8fr_0.8fr] gap-8 border-t border-slate-200 pt-8 text-sm">
+          <div><p className="font-black uppercase tracking-[0.14em]">Documento financeiro</p><p className="mt-2 text-slate-600">Emitido automaticamente pela Nexopsi.</p><p className="mt-1 font-bold">www.nexopsi.com</p></div>
+          <div className="border-l border-slate-200 pl-8"><p className="font-black uppercase tracking-[0.14em]">Codigo da fatura</p><p className="mt-2 text-slate-600">{invoice.id}</p></div>
+          <div className="border-l border-slate-200 pl-8"><p className="font-black uppercase tracking-[0.14em]">Emitido em</p><p className="mt-2 text-slate-600">{issuedAt.toLocaleDateString("pt-BR")} as {issuedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p></div>
+        </footer>
+
+        <div className="mt-6 flex justify-end gap-3 print:hidden">
+          <Button type="button" variant="outline" onClick={onClose}>Fechar</Button>
+          <Button type="button" onClick={() => window.print()}>Imprimir / salvar PDF</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Metric({ title, value, helper, icon, tone }: { title: string; value: string; helper: string; icon: React.ReactNode; tone: "primary" | "success" | "warning" | "danger" }) {
   const color = {
     primary: "bg-primary-soft text-primary",
@@ -903,4 +1107,94 @@ function buildInvoiceMessage(invoice: Invoice, channel: "whatsapp" | "email") {
     "",
     "Qualquer duvida, fico a disposicao."
   ].join("\n");
+}
+
+type DatabasePrice = {
+  id: string;
+  name: string;
+  duration: string | null;
+  value: number | string;
+  recurrence: string | null;
+  active: boolean;
+};
+
+type DatabaseInvoice = {
+  id: string;
+  patient_id: string | null;
+  patient_name: string;
+  patient_cpf: string | null;
+  patient_phone: string | null;
+  patient_email: string | null;
+  description: string;
+  due_date: string;
+  amount: number | string;
+  status: InvoiceStatus;
+  method: string;
+  kind: InvoiceKind;
+  installments: string | null;
+};
+
+function mapDatabasePrice(price: DatabasePrice): ServicePrice {
+  return {
+    id: price.id,
+    name: price.name,
+    duration: price.duration ?? "50 min",
+    value: Number(price.value ?? 0),
+    recurrence: price.recurrence ?? "Por sessao",
+    active: price.active
+  };
+}
+
+function mapPriceToDatabase(price: ServicePrice, organizationId: string) {
+  const payload: Record<string, string | number | boolean> = {
+    organization_id: organizationId,
+    name: price.name,
+    duration: price.duration,
+    value: price.value,
+    recurrence: price.recurrence,
+    active: price.active
+  };
+  if (isUuid(price.id)) payload.id = price.id;
+  return payload;
+}
+
+function mapDatabaseInvoice(invoice: DatabaseInvoice): Invoice {
+  return {
+    id: invoice.id,
+    patientId: invoice.patient_id ?? undefined,
+    patient: invoice.patient_name,
+    patientCpf: invoice.patient_cpf ?? "",
+    patientPhone: invoice.patient_phone ?? "",
+    patientEmail: invoice.patient_email ?? "",
+    description: invoice.description,
+    dueDate: invoice.due_date,
+    amount: Number(invoice.amount ?? 0),
+    status: invoice.status,
+    method: invoice.method,
+    kind: invoice.kind,
+    installments: invoice.installments ?? ""
+  };
+}
+
+function mapInvoiceToDatabase(invoice: Invoice, organizationId: string) {
+  return {
+    id: invoice.id,
+    organization_id: organizationId,
+    patient_id: invoice.patientId && isUuid(invoice.patientId) ? invoice.patientId : null,
+    patient_name: invoice.patient,
+    patient_cpf: invoice.patientCpf || null,
+    patient_phone: invoice.patientPhone || null,
+    patient_email: invoice.patientEmail || null,
+    description: invoice.description,
+    due_date: invoice.dueDate,
+    amount: invoice.amount,
+    status: invoice.status,
+    method: invoice.method,
+    kind: invoice.kind,
+    installments: invoice.installments || null
+  };
+}
+
+function isUuid(value?: string) {
+  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
 }

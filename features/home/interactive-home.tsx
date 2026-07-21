@@ -73,21 +73,29 @@ export function InteractiveHome() {
         setWorkspaceId(String(ensuredWorkspaceId));
 
         const { data, error } = await supabase
+          .from("professional_profiles")
+          .select("full_name, avatar_url, crp, phone, email, specialty, bio")
+          .eq("organization_id", ensuredWorkspaceId)
+          .eq("profile_id", userId)
+          .maybeSingle();
+
+        const { data: baseProfile } = await supabase
           .from("profiles")
           .select("full_name, avatar_url, crp, phone, email, specialty, bio")
           .eq("id", userId)
           .maybeSingle();
 
         if (error || !active) return;
+        const profileData = data ?? baseProfile;
 
         setProfessionalProfile({
-          name: data?.full_name ?? String(metadata.full_name ?? ""),
-          register: data?.crp ?? String(metadata.crp ?? ""),
-          email: data?.email ?? String(metadata.email ?? userData.user?.email ?? ""),
-          phone: data?.phone ?? String(metadata.phone ?? ""),
-          specialty: data?.specialty ?? String(metadata.specialty ?? "Psicologia clinica"),
-          bio: data?.bio ?? String(metadata.bio ?? ""),
-          photoUrl: data?.avatar_url ?? String(metadata.avatar_url ?? "")
+          name: profileData?.full_name ?? String(metadata.full_name ?? ""),
+          register: profileData?.crp ?? String(metadata.crp ?? ""),
+          email: profileData?.email ?? String(metadata.email ?? userData.user?.email ?? ""),
+          phone: profileData?.phone ?? String(metadata.phone ?? ""),
+          specialty: profileData?.specialty ?? String(metadata.specialty ?? "Psicologia clinica"),
+          bio: profileData?.bio ?? String(metadata.bio ?? ""),
+          photoUrl: profileData?.avatar_url ?? String(metadata.avatar_url ?? "")
         });
 
         const { data: savedPatients, error: patientsError } = await supabase
@@ -101,7 +109,7 @@ export function InteractiveHome() {
           return;
         }
 
-        const nextPatients = (savedPatients ?? []).map((patient) => mapDatabasePatient(patient, data?.full_name ?? String(metadata.full_name ?? "")));
+        const nextPatients = (savedPatients ?? []).map((patient) => mapDatabasePatient(patient, profileData?.full_name ?? String(metadata.full_name ?? "")));
         if (active) {
           setPatients(nextPatients);
           storePatientsLocally(nextPatients);
@@ -175,17 +183,37 @@ export function InteractiveHome() {
       const organizationId = workspaceId ?? (await ensureWorkspace(supabase, profile.name || "Profissional Nexopsi"));
       setWorkspaceId(organizationId);
 
+      const profilePayload = {
+        organization_id: organizationId,
+        profile_id: userId,
+        full_name: profile.name || "Profissional Nexopsi",
+        avatar_url: profile.photoUrl || null,
+        crp: profile.register || null,
+        phone: profile.phone || null,
+        email: profile.email || userData.user?.email || null,
+        specialty: profile.specialty || null,
+        bio: profile.bio || null
+      };
+
       const { data: savedProfile, error } = await supabase
-        .rpc("save_professional_profile", {
-          profile_name: profile.name || "Profissional Nexopsi",
-          profile_register: profile.register || "",
-          profile_email: profile.email || userData.user?.email || "",
-          profile_phone: profile.phone || "",
-          profile_specialty: profile.specialty || "",
-          profile_bio: profile.bio || "",
-          profile_photo_url: profile.photoUrl || ""
-        })
+        .from("professional_profiles")
+        .upsert(profilePayload, { onConflict: "organization_id,profile_id" })
+        .select("full_name, avatar_url, crp, phone, email, specialty, bio")
         .single();
+
+      await supabase.from("profiles").upsert(
+        {
+          id: userId,
+          full_name: profilePayload.full_name,
+          avatar_url: profilePayload.avatar_url,
+          crp: profilePayload.crp,
+          phone: profilePayload.phone,
+          email: profilePayload.email,
+          specialty: profilePayload.specialty,
+          bio: profilePayload.bio
+        },
+        { onConflict: "id" }
+      );
 
       const currentMetadata = userData.user?.user_metadata ?? {};
       const metadataResult = await supabase.auth.updateUser({
@@ -390,7 +418,7 @@ export function InteractiveHome() {
             icon={<WalletCards className="h-4 w-4" />}
             onAction={() => notify("Use o botão Nova fatura dentro do financeiro.")}
           />
-          <FinancePanel patients={patients} searchQuery={activeView === "financeiro" ? globalFilter : ""} onNotify={notify} />
+          <FinancePanel workspaceId={workspaceId} patients={patients} searchQuery={activeView === "financeiro" ? globalFilter : ""} onNotify={notify} />
         </>
       );
     }

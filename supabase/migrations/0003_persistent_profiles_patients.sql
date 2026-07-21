@@ -57,6 +57,54 @@ create table if not exists patients (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists professional_profiles (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  profile_id uuid not null references profiles(id) on delete cascade,
+  full_name text not null,
+  avatar_url text,
+  crp text,
+  phone text,
+  email text,
+  specialty text,
+  bio text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (organization_id, profile_id)
+);
+
+create table if not exists service_prices (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  name text not null,
+  duration text,
+  value numeric(12,2) not null default 0,
+  recurrence text,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists invoices (
+  id text primary key,
+  organization_id uuid not null references organizations(id) on delete cascade,
+  patient_id uuid references patients(id) on delete set null,
+  patient_name text not null,
+  patient_cpf text,
+  patient_phone text,
+  patient_email text,
+  description text not null,
+  due_date date not null,
+  amount numeric(12,2) not null default 0,
+  status text not null default 'pendente',
+  method text not null default 'Pix',
+  kind text not null default 'mensalidade',
+  installments text,
+  issued_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 alter table profiles
   add column if not exists email text,
   add column if not exists specialty text,
@@ -75,12 +123,24 @@ alter table patients
   add column if not exists next_session text,
   add column if not exists last_session text;
 
+alter table invoices
+  add column if not exists patient_cpf text;
+
 create index if not exists organization_members_profile_idx
   on organization_members (profile_id, organization_id)
   where active = true;
 
 create index if not exists patients_organization_status_idx
   on patients (organization_id, status);
+
+create index if not exists professional_profiles_org_profile_idx
+  on professional_profiles (organization_id, profile_id);
+
+create index if not exists service_prices_organization_idx
+  on service_prices (organization_id, active);
+
+create index if not exists invoices_organization_status_idx
+  on invoices (organization_id, status, due_date);
 
 create or replace function is_org_member(target_organization_id uuid)
 returns boolean
@@ -101,6 +161,9 @@ alter table organizations enable row level security;
 alter table profiles enable row level security;
 alter table organization_members enable row level security;
 alter table patients enable row level security;
+alter table professional_profiles enable row level security;
+alter table service_prices enable row level security;
+alter table invoices enable row level security;
 
 do $$
 begin
@@ -212,6 +275,45 @@ begin
       on patients
       for delete
       using (is_org_member(organization_id));
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'professional_profiles'
+      and policyname = 'members can manage own professional profiles'
+  ) then
+    create policy "members can manage own professional profiles"
+      on professional_profiles
+      for all
+      using (is_org_member(organization_id) and profile_id = auth.uid())
+      with check (is_org_member(organization_id) and profile_id = auth.uid());
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'service_prices'
+      and policyname = 'members can manage own service prices'
+  ) then
+    create policy "members can manage own service prices"
+      on service_prices
+      for all
+      using (is_org_member(organization_id))
+      with check (is_org_member(organization_id));
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'invoices'
+      and policyname = 'members can manage own invoices'
+  ) then
+    create policy "members can manage own invoices"
+      on invoices
+      for all
+      using (is_org_member(organization_id))
+      with check (is_org_member(organization_id));
   end if;
 end $$;
 
