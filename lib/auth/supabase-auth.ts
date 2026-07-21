@@ -26,7 +26,7 @@ export async function signUpWithEmail(email: string, password: string, activatio
     if (!response.ok) {
       return {
         data: null,
-        error: { message: payload?.error ?? "Nao foi possivel criar a conta agora." }
+        error: { message: readPayloadError(payload) }
       };
     }
 
@@ -40,6 +40,21 @@ export async function signUpWithEmail(email: string, password: string, activatio
       error: { message: "Nao foi possivel criar a conta agora." }
     };
   }
+}
+
+function readPayloadError(payload: unknown) {
+  if (!payload || typeof payload !== "object") return "Nao foi possivel criar a conta agora.";
+  const error = (payload as { error?: unknown }).error;
+  if (typeof error === "string" && error.trim()) return error;
+  if (error && typeof error === "object") {
+    try {
+      const serialized = JSON.stringify(error);
+      if (serialized && serialized !== "{}") return serialized;
+    } catch {
+      return "Nao foi possivel ler o erro retornado pelo servidor.";
+    }
+  }
+  return "O servidor recusou o cadastro sem mensagem detalhada. Verifique os logs do Supabase Auth.";
 }
 
 async function readJsonResponse(response: Response) {

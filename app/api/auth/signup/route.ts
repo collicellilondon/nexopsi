@@ -37,26 +37,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Supabase nao configurado para criar contas." }, { status: 500 });
   }
 
-  const appUrl = resolveAppUrl(request);
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
-  const result = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${appUrl}/dashboard`,
-      data: {
-        app_name: "Nexopsi",
-        activation_status: "validated",
-        created_by: "ColliDev"
+  try {
+    const appUrl = resolveAppUrl(request);
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const result = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${appUrl}/dashboard`,
+        data: {
+          app_name: "Nexopsi",
+          activation_status: "validated",
+          created_by: "ColliDev"
+        }
       }
+    });
+
+    if (result.error) {
+      return NextResponse.json({ error: translateSignupError(readErrorMessage(result.error)) }, { status: 400 });
     }
-  });
 
-  if (result.error) {
-    return NextResponse.json({ error: translateSignupError(result.error.message) }, { status: 400 });
+    return NextResponse.json({ data: result.data });
+  } catch (error) {
+    return NextResponse.json({ error: `Erro ao conectar com o Supabase Auth: ${readErrorMessage(error)}` }, { status: 500 });
   }
-
-  return NextResponse.json({ data: result.data });
 }
 
 function isValidActivationCode(value: string) {
@@ -71,7 +75,7 @@ function isValidActivationCode(value: string) {
 }
 
 function normalizeActivationCode(value?: string) {
-  return value?.trim().toUpperCase().replace(/\s+/g, "") ?? "";
+  return value?.trim().toUpperCase().replace(/[^A-Z0-9]/g, "") ?? "";
 }
 
 function resolveAppUrl(request: Request) {
@@ -105,5 +109,24 @@ function translateSignupError(message: string) {
     return "O e-mail foi recusado pelo Supabase. Verifique o endereco informado.";
   }
 
-  return message;
+  return message || "O Supabase recusou o cadastro, mas nao retornou uma mensagem detalhada. Verifique Auth > Logs no Supabase.";
+}
+
+function readErrorMessage(error: unknown) {
+  if (!error) return "Erro desconhecido.";
+  if (typeof error === "string") return error;
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    const message = record.message ?? record.error_description ?? record.error ?? record.code ?? record.name;
+    if (typeof message === "string" && message.trim()) return message;
+    try {
+      const serialized = JSON.stringify(record);
+      if (serialized && serialized !== "{}") return serialized;
+    } catch {
+      return "Erro desconhecido do Supabase.";
+    }
+  }
+
+  return "Erro desconhecido do Supabase.";
 }
