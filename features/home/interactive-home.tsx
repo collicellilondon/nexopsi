@@ -175,19 +175,17 @@ export function InteractiveHome() {
       const organizationId = workspaceId ?? (await ensureWorkspace(supabase, profile.name || "Profissional Nexopsi"));
       setWorkspaceId(organizationId);
 
-      const { error } = await supabase.from("profiles").upsert(
-        {
-          id: userId,
-          full_name: profile.name || "Profissional Nexopsi",
-          avatar_url: profile.photoUrl || null,
-          crp: profile.register || null,
-          phone: profile.phone || null,
-          email: profile.email || userData.user?.email || null,
-          specialty: profile.specialty || null,
-          bio: profile.bio || null
-        },
-        { onConflict: "id" }
-      );
+      const { data: savedProfile, error } = await supabase
+        .rpc("save_professional_profile", {
+          profile_name: profile.name || "Profissional Nexopsi",
+          profile_register: profile.register || "",
+          profile_email: profile.email || userData.user?.email || "",
+          profile_phone: profile.phone || "",
+          profile_specialty: profile.specialty || "",
+          profile_bio: profile.bio || "",
+          profile_photo_url: profile.photoUrl || ""
+        })
+        .single();
 
       const currentMetadata = userData.user?.user_metadata ?? {};
       const metadataResult = await supabase.auth.updateUser({
@@ -211,6 +209,19 @@ export function InteractiveHome() {
       if (error) {
         notify("Cadastro salvo no Supabase. A tabela de perfis precisa receber a migração para gravar a ficha completa.");
         return;
+      }
+
+      if (savedProfile) {
+        const profileRow = savedProfile as DatabaseProfessionalProfile;
+        setProfessionalProfile({
+          name: profileRow.full_name ?? profile.name,
+          register: profileRow.crp ?? "",
+          email: profileRow.email ?? profile.email,
+          phone: profileRow.phone ?? "",
+          specialty: profileRow.specialty ?? profile.specialty,
+          bio: profileRow.bio ?? profile.bio,
+          photoUrl: profileRow.avatar_url ?? ""
+        });
       }
 
       notify(`Cadastro profissional salvo no Supabase para ${profile.name || "profissional"}.`);
@@ -516,6 +527,16 @@ type DatabasePatient = {
   pending_balance: number | string | null;
   next_session: string | null;
   last_session: string | null;
+};
+
+type DatabaseProfessionalProfile = {
+  full_name: string | null;
+  avatar_url: string | null;
+  crp: string | null;
+  phone: string | null;
+  email: string | null;
+  specialty: string | null;
+  bio: string | null;
 };
 
 async function ensureWorkspace(supabase: ReturnType<typeof createBrowserSupabaseClient>, profileName: string) {

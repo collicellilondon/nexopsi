@@ -268,3 +268,57 @@ end;
 $$;
 
 grant execute on function ensure_personal_workspace(text) to authenticated;
+
+create or replace function save_professional_profile(
+  profile_name text default null,
+  profile_register text default null,
+  profile_email text default null,
+  profile_phone text default null,
+  profile_specialty text default null,
+  profile_bio text default null,
+  profile_photo_url text default null
+)
+returns table (
+  full_name text,
+  avatar_url text,
+  crp text,
+  phone text,
+  email text,
+  specialty text,
+  bio text
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  workspace_id uuid;
+  resolved_name text;
+begin
+  if current_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  resolved_name := coalesce(nullif(profile_name, ''), 'Profissional Nexopsi');
+  workspace_id := ensure_personal_workspace(resolved_name);
+
+  update profiles
+     set full_name = resolved_name,
+         avatar_url = nullif(profile_photo_url, ''),
+         crp = nullif(profile_register, ''),
+         phone = nullif(profile_phone, ''),
+         email = coalesce(nullif(profile_email, ''), auth.jwt() ->> 'email'),
+         specialty = nullif(profile_specialty, ''),
+         bio = nullif(profile_bio, ''),
+         updated_at = now()
+   where id = current_user_id;
+
+  return query
+  select p.full_name, p.avatar_url, p.crp, p.phone, p.email, p.specialty, p.bio
+    from profiles p
+   where p.id = current_user_id;
+end;
+$$;
+
+grant execute on function save_professional_profile(text, text, text, text, text, text, text) to authenticated;
