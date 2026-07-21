@@ -290,6 +290,12 @@ alter table documents
   add column if not exists status text not null default 'draft',
   add column if not exists updated_at timestamptz not null default now();
 
+alter table app_settings
+  add column if not exists organization_id uuid references organizations(id) on delete cascade,
+  add column if not exists key text,
+  add column if not exists value jsonb not null default '{}'::jsonb,
+  add column if not exists updated_at timestamptz not null default now();
+
 create index if not exists organization_members_profile_idx
   on organization_members (profile_id, organization_id)
   where active = true;
@@ -329,6 +335,9 @@ create index if not exists prescriptions_organization_patient_idx
 
 create index if not exists reports_organization_patient_idx
   on reports (organization_id, patient_id);
+
+create unique index if not exists app_settings_organization_key_unique
+  on app_settings (organization_id, key);
 
 create or replace function is_org_member(target_organization_id uuid)
 returns boolean
