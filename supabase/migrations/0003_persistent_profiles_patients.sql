@@ -1,3 +1,62 @@
+create extension if not exists "pgcrypto";
+
+create table if not exists organizations (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  legal_name text,
+  document_number text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  full_name text not null,
+  avatar_url text,
+  crp text,
+  phone text,
+  email text,
+  specialty text,
+  bio text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists organization_members (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  profile_id uuid not null references profiles(id) on delete cascade,
+  role text not null default 'professional',
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  unique (organization_id, profile_id)
+);
+
+create table if not exists patients (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  full_name text not null,
+  preferred_name text,
+  cpf text,
+  birth_date date,
+  status text not null default 'intake',
+  tags text[] not null default '{}',
+  notes text,
+  email text,
+  phone text,
+  address text,
+  emergency_contact text,
+  guardian text,
+  occupation text,
+  referral_source text,
+  main_complaint text,
+  pending_balance numeric(12,2) not null default 0,
+  next_session text,
+  last_session text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 alter table profiles
   add column if not exists email text,
   add column if not exists specialty text,
@@ -16,6 +75,33 @@ alter table patients
   add column if not exists next_session text,
   add column if not exists last_session text;
 
+create index if not exists organization_members_profile_idx
+  on organization_members (profile_id, organization_id)
+  where active = true;
+
+create index if not exists patients_organization_status_idx
+  on patients (organization_id, status);
+
+create or replace function is_org_member(target_organization_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from organization_members om
+    where om.organization_id = target_organization_id
+      and om.profile_id = auth.uid()
+      and om.active = true
+  );
+$$;
+
+alter table organizations enable row level security;
+alter table profiles enable row level security;
+alter table organization_members enable row level security;
+alter table patients enable row level security;
+
 do $$
 begin
   if not exists (
@@ -28,6 +114,104 @@ begin
       on profiles
       for insert
       with check (id = auth.uid());
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'profiles'
+      and policyname = 'profiles can read own profile'
+  ) then
+    create policy "profiles can read own profile"
+      on profiles
+      for select
+      using (id = auth.uid());
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'profiles'
+      and policyname = 'profiles can update own profile'
+  ) then
+    create policy "profiles can update own profile"
+      on profiles
+      for update
+      using (id = auth.uid())
+      with check (id = auth.uid());
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'organizations'
+      and policyname = 'members can read own organizations'
+  ) then
+    create policy "members can read own organizations"
+      on organizations
+      for select
+      using (is_org_member(id));
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'organization_members'
+      and policyname = 'members can read own memberships'
+  ) then
+    create policy "members can read own memberships"
+      on organization_members
+      for select
+      using (profile_id = auth.uid() or is_org_member(organization_id));
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'patients'
+      and policyname = 'members can read own patients'
+  ) then
+    create policy "members can read own patients"
+      on patients
+      for select
+      using (is_org_member(organization_id));
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'patients'
+      and policyname = 'members can create own patients'
+  ) then
+    create policy "members can create own patients"
+      on patients
+      for insert
+      with check (is_org_member(organization_id));
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'patients'
+      and policyname = 'members can update own patients'
+  ) then
+    create policy "members can update own patients"
+      on patients
+      for update
+      using (is_org_member(organization_id))
+      with check (is_org_member(organization_id));
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'patients'
+      and policyname = 'members can delete own patients'
+  ) then
+    create policy "members can delete own patients"
+      on patients
+      for delete
+      using (is_org_member(organization_id));
   end if;
 end $$;
 
