@@ -87,8 +87,7 @@ export function InteractiveHome() {
 
         if (error || !active) return;
         const profileData = data ?? baseProfile;
-
-        setProfessionalProfile({
+        const resolvedProfile = {
           name: profileData?.full_name ?? String(metadata.full_name ?? ""),
           register: profileData?.crp ?? String(metadata.crp ?? ""),
           email: profileData?.email ?? String(metadata.email ?? userData.user?.email ?? ""),
@@ -96,7 +95,21 @@ export function InteractiveHome() {
           specialty: profileData?.specialty ?? String(metadata.specialty ?? "Psicologia clinica"),
           bio: profileData?.bio ?? String(metadata.bio ?? ""),
           photoUrl: profileData?.avatar_url ?? String(metadata.avatar_url ?? "")
-        });
+        };
+
+        setProfessionalProfile(resolvedProfile);
+
+        if (!data) {
+          await supabase.rpc("save_professional_profile", {
+            profile_name: resolvedProfile.name || "Profissional Nexopsi",
+            profile_register: resolvedProfile.register || null,
+            profile_email: resolvedProfile.email || userData.user?.email || null,
+            profile_phone: resolvedProfile.phone || null,
+            profile_specialty: resolvedProfile.specialty || null,
+            profile_bio: resolvedProfile.bio || null,
+            profile_photo_url: resolvedProfile.photoUrl || null
+          });
+        }
 
         const { data: savedPatients, error: patientsError } = await supabase
           .from("patients")
