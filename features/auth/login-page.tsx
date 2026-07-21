@@ -58,6 +58,7 @@ export function LoginPage() {
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [salesOpen, setSalesOpen] = useState(false);
   const [resetReady, setResetReady] = useState(false);
+  const [authErrorMessage, setAuthErrorMessage] = useState("");
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -74,7 +75,7 @@ export function LoginPage() {
     defaultValues: { password: "", confirmPassword: "" }
   });
 
-  const alert = useMemo(() => getAuthAlert(authState), [authState]);
+  const alert = useMemo(() => getAuthAlert(authState, authErrorMessage), [authState, authErrorMessage]);
   const isSignup = authMode === "signup";
   const isReset = authMode === "reset";
 
@@ -107,6 +108,7 @@ export function LoginPage() {
 
   async function onSubmit(values: LoginFormValues) {
     setAuthState("loading");
+    setAuthErrorMessage("");
 
     if (isSignup) {
       const parsed = signupSchema.safeParse(values);
@@ -140,6 +142,10 @@ export function LoginPage() {
         form.setError("activationCode", { message: result.error.message });
         setAuthState("normal");
         return;
+      }
+
+      if (result.error.message.toLowerCase().includes("e-mail")) {
+        form.setError("email", { message: result.error.message });
       }
 
       handleAuthError(result.error.message);
@@ -190,6 +196,7 @@ export function LoginPage() {
 
   function handleAuthError(message: string) {
     const normalized = message.toLowerCase();
+    setAuthErrorMessage(message);
     if (normalized.includes("disabled")) setAuthState("disabled");
     else if (normalized.includes("confirm")) setAuthState("unconfirmed");
     else if (normalized.includes("network") || normalized.includes("fetch") || normalized.includes("supabase")) setAuthState("connection");
@@ -199,6 +206,7 @@ export function LoginPage() {
   function switchMode(mode: AuthMode) {
     setAuthMode(mode);
     setAuthState("normal");
+    setAuthErrorMessage("");
     form.clearErrors();
     resetForm.clearErrors();
   }
@@ -622,12 +630,12 @@ function AuthAlert({ state, title, description }: { state: AuthState; title: str
   );
 }
 
-function getAuthAlert(state: AuthState) {
+function getAuthAlert(state: AuthState, customMessage = "") {
   const alerts: Partial<Record<AuthState, { title: string; description: string }>> = {
-    invalid: { title: "Não foi possível continuar", description: "Revise o e-mail e a senha informados." },
-    connection: { title: "Conexão indisponível", description: "Tente novamente em instantes ou verifique a configuração do Supabase." },
+    invalid: { title: "Não foi possível continuar", description: customMessage || "Revise o e-mail e a senha informados." },
+    connection: { title: "Conexão indisponível", description: customMessage || "Tente novamente em instantes ou verifique a configuração do Supabase." },
     disabled: { title: "Conta desativada", description: "Entre em contato com o suporte da clínica." },
-    unconfirmed: { title: "E-mail não confirmado", description: "Confirme seu e-mail antes de acessar." },
+    unconfirmed: { title: "E-mail não confirmado", description: customMessage || "Confirme seu e-mail antes de acessar." },
     success: { title: "Acesso confirmado", description: "Redirecionando para sua clínica..." },
     "signup-sent": { title: "Cadastro iniciado", description: "Enviamos um e-mail de confirmação. Depois de confirmar, volte para entrar na plataforma." },
     "recovery-sent": { title: "Link de redefinição enviado", description: "Enviamos um e-mail em português com o link seguro para criar uma nova senha." },

@@ -22,7 +22,7 @@ export async function signUpWithEmail(email: string, password: string, activatio
       body: JSON.stringify({ email, password, activationCode })
     });
 
-    const payload = await response.json();
+    const payload = await readJsonResponse(response);
     if (!response.ok) {
       return {
         data: null,
@@ -39,6 +39,14 @@ export async function signUpWithEmail(email: string, password: string, activatio
       data: null,
       error: { message: "Nao foi possivel criar a conta agora." }
     };
+  }
+}
+
+async function readJsonResponse(response: Response) {
+  try {
+    return await response.json();
+  } catch {
+    return { error: `Resposta inesperada do servidor (${response.status}).` };
   }
 }
 

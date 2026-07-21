@@ -53,7 +53,7 @@ export async function POST(request: Request) {
   });
 
   if (result.error) {
-    return NextResponse.json({ error: result.error.message }, { status: 400 });
+    return NextResponse.json({ error: translateSignupError(result.error.message) }, { status: 400 });
   }
 
   return NextResponse.json({ data: result.data });
@@ -84,4 +84,26 @@ function resolveAppUrl(request: Request) {
   }
 
   return defaultAppUrl;
+}
+
+function translateSignupError(message: string) {
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("already") || normalized.includes("registered") || normalized.includes("exists")) {
+    return "Este e-mail ja possui uma conta. Use Entrar ou redefina a senha.";
+  }
+
+  if (normalized.includes("password")) {
+    return "A senha foi recusada pelo Supabase. Use pelo menos 8 caracteres, com letras e numeros.";
+  }
+
+  if (normalized.includes("signup") && normalized.includes("disabled")) {
+    return "O cadastro por e-mail esta desativado no Supabase Auth.";
+  }
+
+  if (normalized.includes("email")) {
+    return "O e-mail foi recusado pelo Supabase. Verifique o endereco informado.";
+  }
+
+  return message;
 }
