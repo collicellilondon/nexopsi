@@ -14,7 +14,15 @@ Configuracoes importantes em Authentication > URL Configuration:
 
 Remetente profissional recomendado, depois do Resend verificado:
 
-`Nexopsi <noreply@nexopsi.app.br>`
+- Sender email address: `noreply@nexopsi.app.br`
+- Sender name: `Nexopsi`
+
+Nao use `Nexopsi <noreply@nexopsi.app.br>` no campo Sender email address do Supabase.
+
+Templates prontos em HTML:
+
+- `supabase/email-templates/confirm-signup.html`
+- `supabase/email-templates/reset-password.html`
 
 ## Confirm signup
 
