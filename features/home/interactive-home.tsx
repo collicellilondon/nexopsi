@@ -19,6 +19,7 @@ import type { Patient } from "@/lib/types";
 
 export function InteractiveHome() {
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [patientModalOpen, setPatientModalOpen] = useState(false);
   const [sessionSeed, setSessionSeed] = useState(0);
   const [activeView, setActiveView] = useState<AppView>("inicio");
@@ -48,7 +49,7 @@ export function InteractiveHome() {
   useEffect(() => {
     let active = true;
 
-    async function loadProfessionalProfile() {
+    async function loadAppData() {
       try {
         const storedPatients = readStoredPatients();
         if (active && storedPatients.length > 0) {
@@ -59,40 +60,58 @@ export function InteractiveHome() {
         const { data: userData } = await supabase.auth.getUser();
         const userId = userData.user?.id;
         if (!userId) return;
+        const metadata = userData.user?.user_metadata ?? {};
+
+        const { data: ensuredWorkspaceId, error: workspaceError } = await supabase.rpc("ensure_personal_workspace", {
+          profile_name: String(metadata.full_name ?? userData.user?.email ?? "Profissional Nexopsi")
+        });
+        if (workspaceError || !ensuredWorkspaceId) {
+          notify(`Nao foi possivel preparar o banco de dados: ${workspaceError?.message ?? "workspace nao encontrado"}.`);
+          return;
+        }
+        if (!active) return;
+        setWorkspaceId(String(ensuredWorkspaceId));
 
         const { data, error } = await supabase
           .from("profiles")
-          .select("full_name, avatar_url, crp, phone")
+          .select("full_name, avatar_url, crp, phone, email, specialty, bio")
           .eq("id", userId)
           .maybeSingle();
 
-        const metadata = userData.user?.user_metadata ?? {};
         if (error || !active) return;
-
-        const metadataPatients = readMetadataPatients(metadata.patients);
-        if (metadataPatients.length > 0) {
-          const nextPatients = dedupePatients(metadataPatients);
-          setPatients(nextPatients);
-          storePatientsLocally(nextPatients);
-        } else if (storedPatients.length > 0) {
-          await supabase.auth.updateUser({ data: { ...metadata, patients: dedupePatients(storedPatients) } });
-        }
 
         setProfessionalProfile({
           name: data?.full_name ?? String(metadata.full_name ?? ""),
           register: data?.crp ?? String(metadata.crp ?? ""),
-          email: String(metadata.email ?? userData.user?.email ?? ""),
+          email: data?.email ?? String(metadata.email ?? userData.user?.email ?? ""),
           phone: data?.phone ?? String(metadata.phone ?? ""),
-          specialty: String(metadata.specialty ?? "Psicologia clinica"),
-          bio: String(metadata.bio ?? ""),
+          specialty: data?.specialty ?? String(metadata.specialty ?? "Psicologia clinica"),
+          bio: data?.bio ?? String(metadata.bio ?? ""),
           photoUrl: data?.avatar_url ?? String(metadata.avatar_url ?? "")
         });
+
+        const { data: savedPatients, error: patientsError } = await supabase
+          .from("patients")
+          .select("id, full_name, cpf, birth_date, status, tags, notes, email, phone, address, emergency_contact, guardian, occupation, referral_source, main_complaint, pending_balance, next_session, last_session")
+          .eq("organization_id", ensuredWorkspaceId)
+          .order("created_at", { ascending: false });
+
+        if (patientsError) {
+          notify(`Nao foi possivel carregar pacientes do Supabase: ${patientsError.message}`);
+          return;
+        }
+
+        const nextPatients = (savedPatients ?? []).map((patient) => mapDatabasePatient(patient, data?.full_name ?? String(metadata.full_name ?? "")));
+        if (active) {
+          setPatients(nextPatients);
+          storePatientsLocally(nextPatients);
+        }
       } catch {
         // O painel continua utilizavel mesmo se o Supabase estiver indisponivel.
       }
     }
 
-    loadProfessionalProfile();
+    loadAppData();
 
     return () => {
       active = false;
@@ -110,14 +129,35 @@ export function InteractiveHome() {
     notify("Cadastro completo de paciente aberto.");
   }
 
-  function savePatient(patient: Patient) {
-    const nextPatients = dedupePatients([patient, ...patients]);
-    setPatients(nextPatients);
-    persistPatients(nextPatients);
+  async function savePatient(patient: Patient) {
+    const optimisticPatients = dedupePatients([patient, ...patients]);
+    setPatients(optimisticPatients);
+    storePatientsLocally(optimisticPatients);
     setPatientModalOpen(false);
-    notify(`Paciente ${patient.name} cadastrado com ficha completa.`);
+    notify(`Salvando paciente ${patient.name} no Supabase...`);
     setActiveView("pacientes");
     setGlobalFilter(patient.name);
+
+    try {
+      const supabase = createBrowserSupabaseClient();
+      const organizationId = workspaceId ?? (await ensureWorkspace(supabase, professionalProfile.name || "Profissional Nexopsi"));
+      setWorkspaceId(organizationId);
+
+      const payload = mapPatientToDatabase(patient, organizationId);
+      const { data, error } = await supabase.from("patients").insert(payload).select("id, full_name, cpf, birth_date, status, tags, notes, email, phone, address, emergency_contact, guardian, occupation, referral_source, main_complaint, pending_balance, next_session, last_session").single();
+      if (error) {
+        notify(`Nao foi possivel salvar o paciente no Supabase: ${error.message}`);
+        return;
+      }
+
+      const savedPatient = mapDatabasePatient(data, professionalProfile.name || patient.therapist);
+      const nextPatients = dedupePatients([savedPatient, ...patients.filter((item) => item.id !== patient.id)]);
+      setPatients(nextPatients);
+      storePatientsLocally(nextPatients);
+      notify(`Paciente ${patient.name} salvo no Supabase.`);
+    } catch {
+      notify("Nao foi possivel conectar ao Supabase para salvar o paciente.");
+    }
   }
 
   async function saveProfessionalProfile(profile: ProfessionalProfileData) {
@@ -132,13 +172,19 @@ export function InteractiveHome() {
         return;
       }
 
+      const organizationId = workspaceId ?? (await ensureWorkspace(supabase, profile.name || "Profissional Nexopsi"));
+      setWorkspaceId(organizationId);
+
       const { error } = await supabase.from("profiles").upsert(
         {
           id: userId,
           full_name: profile.name || "Profissional Nexopsi",
           avatar_url: profile.photoUrl || null,
           crp: profile.register || null,
-          phone: profile.phone || null
+          phone: profile.phone || null,
+          email: profile.email || userData.user?.email || null,
+          specialty: profile.specialty || null,
+          bio: profile.bio || null
         },
         { onConflict: "id" }
       );
@@ -153,8 +199,7 @@ export function InteractiveHome() {
           phone: profile.phone || "",
           email: profile.email || userData.user?.email || "",
           specialty: profile.specialty || "",
-          bio: profile.bio || "",
-          patients
+          bio: profile.bio || ""
         }
       });
 
@@ -174,20 +219,6 @@ export function InteractiveHome() {
     }
   }
 
-  async function persistPatients(nextPatients: Patient[]) {
-    storePatientsLocally(nextPatients);
-
-    try {
-      const supabase = createBrowserSupabaseClient();
-      const { data: userData } = await supabase.auth.getUser();
-      const metadata = userData.user?.user_metadata ?? {};
-      if (!userData.user?.id) return;
-      const { error } = await supabase.auth.updateUser({ data: { ...metadata, patients: nextPatients } });
-      if (error) notify(`Paciente salvo nesta tela, mas o Supabase retornou: ${error.message}`);
-    } catch {
-      notify("Paciente salvo nesta tela. Nao foi possivel sincronizar com o Supabase agora.");
-    }
-  }
 
   function createSession() {
     setActiveView("agenda");
@@ -466,6 +497,118 @@ function dedupePatients(items: Patient[]) {
 
 const patientStorageKey = "nexopsi_patients";
 
+type DatabasePatient = {
+  id: string;
+  full_name: string;
+  cpf: string | null;
+  birth_date: string | null;
+  status: "active" | "paused" | "discharged" | "intake";
+  tags: string[] | null;
+  notes: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  emergency_contact: string | null;
+  guardian: string | null;
+  occupation: string | null;
+  referral_source: string | null;
+  main_complaint: string | null;
+  pending_balance: number | string | null;
+  next_session: string | null;
+  last_session: string | null;
+};
+
+async function ensureWorkspace(supabase: ReturnType<typeof createBrowserSupabaseClient>, profileName: string) {
+  const { data, error } = await supabase.rpc("ensure_personal_workspace", {
+    profile_name: profileName
+  });
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "Workspace nao encontrado.");
+  }
+
+  return String(data);
+}
+
+function mapDatabasePatient(patient: DatabasePatient, therapist: string): Patient {
+  return {
+    id: patient.id,
+    name: patient.full_name,
+    age: calculateAge(patient.birth_date),
+    status: mapDatabaseStatus(patient.status),
+    tags: patient.tags ?? [],
+    nextSession: patient.next_session ?? "A agendar",
+    lastSession: patient.last_session ?? "Sem historico",
+    pendingBalance: Number(patient.pending_balance ?? 0),
+    phone: patient.phone ?? "",
+    email: patient.email ?? "",
+    therapist,
+    cpf: patient.cpf ?? "",
+    birthDate: patient.birth_date ?? "",
+    address: patient.address ?? "",
+    emergencyContact: patient.emergency_contact ?? "",
+    guardian: patient.guardian ?? "",
+    occupation: patient.occupation ?? "",
+    referralSource: patient.referral_source ?? "",
+    mainComplaint: patient.main_complaint ?? "",
+    clinicalNotes: patient.notes ?? ""
+  };
+}
+
+function mapPatientToDatabase(patient: Patient, organizationId: string) {
+  return {
+    organization_id: organizationId,
+    full_name: patient.name,
+    cpf: patient.cpf || null,
+    birth_date: patient.birthDate || null,
+    status: mapPatientStatus(patient.status),
+    tags: patient.tags ?? [],
+    notes: patient.clinicalNotes || null,
+    email: patient.email || null,
+    phone: patient.phone || null,
+    address: patient.address || null,
+    emergency_contact: patient.emergencyContact || null,
+    guardian: patient.guardian || null,
+    occupation: patient.occupation || null,
+    referral_source: patient.referralSource || null,
+    main_complaint: patient.mainComplaint || null,
+    pending_balance: patient.pendingBalance ?? 0,
+    next_session: patient.nextSession || "A agendar",
+    last_session: patient.lastSession || "Sem historico"
+  };
+}
+
+function calculateAge(birthDate?: string | null) {
+  if (!birthDate) return 0;
+  const date = new Date(birthDate);
+  if (Number.isNaN(date.getTime())) return 0;
+  const today = new Date();
+  let age = today.getFullYear() - date.getFullYear();
+  const monthDiff = today.getMonth() - date.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) age -= 1;
+  return age;
+}
+
+function mapDatabaseStatus(status: DatabasePatient["status"]): Patient["status"] {
+  const statusMap: Record<DatabasePatient["status"], Patient["status"]> = {
+    active: "ativo",
+    paused: "pausado",
+    discharged: "alta",
+    intake: "triagem"
+  };
+  return statusMap[status] ?? "triagem";
+}
+
+function mapPatientStatus(status: Patient["status"]) {
+  const statusMap: Record<Patient["status"], DatabasePatient["status"]> = {
+    ativo: "active",
+    pausado: "paused",
+    alta: "discharged",
+    triagem: "intake"
+  };
+  return statusMap[status] ?? "intake";
+}
+
 function readStoredPatients() {
   if (typeof window === "undefined") return [];
   try {
@@ -478,7 +621,7 @@ function readStoredPatients() {
   }
 }
 
-function readMetadataPatients(value: unknown) {
+function readMetadataPatients(value: unknown): Patient[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is Patient => {
     if (!item || typeof item !== "object") return false;
