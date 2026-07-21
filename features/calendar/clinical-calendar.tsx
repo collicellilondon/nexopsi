@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SessionModal } from "@/features/calendar/session-modal";
-import { appointments as initialAppointments } from "@/lib/mock-data";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { Appointment, AppointmentMode, AppointmentStatus, Patient } from "@/lib/types";
 
 const statusVariant: Record<AppointmentStatus, "default" | "warning" | "success" | "destructive" | "muted"> = {
@@ -34,6 +34,7 @@ const statusColors: Record<AppointmentStatus, { label: string; color: string }> 
 
 type ClinicalCalendarProps = {
   createdCount: number;
+  workspaceId?: string | null;
   patients?: Patient[];
   onNotify: (message: string) => void;
 };
@@ -43,21 +44,52 @@ type ScheduleDraft = {
   end: string;
 };
 
-export function ClinicalCalendar({ createdCount, patients = [], onNotify }: ClinicalCalendarProps) {
-  const [items, setItems] = useState<Appointment[]>(initialAppointments);
-  const [selectedId, setSelectedId] = useState<string | null>(initialAppointments[0]?.id ?? null);
+export function ClinicalCalendar({ createdCount, workspaceId, patients = [], onNotify }: ClinicalCalendarProps) {
+  const [items, setItems] = useState<Appointment[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [modalId, setModalId] = useState<string | null>(null);
   const [scheduler, setScheduler] = useState<ScheduleDraft | null>(null);
   const [waitlist, setWaitlist] = useState<string[]>([]);
   const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null;
   const modalAppointment = items.find((item) => item.id === modalId);
   const activeLegend = Object.entries(statusColors).map(([, value]) => value);
+  const patientNames = useMemo(() => new Map(patients.map((patient) => [patient.id, patient.name])), [patients]);
 
   useEffect(() => {
     if (createdCount === 0) return;
     const hour = 9 + createdCount;
     openScheduler(`2026-07-19T${String(hour).padStart(2, "0")}:00:00`, `2026-07-19T${String(hour).padStart(2, "0")}:50:00`);
   }, [createdCount]);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    let mounted = true;
+
+    async function loadAppointments() {
+      const supabase = createBrowserSupabaseClient();
+      const { data, error } = await supabase
+        .from("appointments")
+        .select("id, patient_id, starts_at, ends_at, status, mode, type, paid, room, location")
+        .eq("organization_id", workspaceId)
+        .order("starts_at", { ascending: true });
+
+      if (!mounted) return;
+      if (error) {
+        onNotify(`Nao foi possivel carregar a agenda do Supabase: ${error.message}`);
+        return;
+      }
+
+      const nextItems = (data ?? []).map((row) => mapDatabaseAppointment(row as DatabaseAppointment, patientNames));
+      setItems(nextItems);
+      setSelectedId((current) => current ?? nextItems[0]?.id ?? null);
+    }
+
+    loadAppointments();
+
+    return () => {
+      mounted = false;
+    };
+  }, [workspaceId, patientNames]);
 
   const events = useMemo(
     () =>
@@ -83,7 +115,7 @@ export function ClinicalCalendar({ createdCount, patients = [], onNotify }: Clin
     onNotify("Popup avançado da sessão aberto.");
   }
 
-  function handleEventDrop(arg: EventDropArg) {
+  async function handleEventDrop(arg: EventDropArg) {
     setItems((current) =>
       current.map((appointment) =>
         appointment.id === arg.event.id
@@ -91,6 +123,18 @@ export function ClinicalCalendar({ createdCount, patients = [], onNotify }: Clin
           : appointment
       )
     );
+    if (workspaceId && arg.event.start && arg.event.end) {
+      const supabase = createBrowserSupabaseClient();
+      const { error } = await supabase
+        .from("appointments")
+        .update({ starts_at: arg.event.start.toISOString(), ends_at: arg.event.end.toISOString() })
+        .eq("id", arg.event.id)
+        .eq("organization_id", workspaceId);
+      if (error) {
+        onNotify(`Nao foi possivel salvar o reagendamento: ${error.message}`);
+        return;
+      }
+    }
     onNotify("Sessão reagendada por arrastar e soltar.");
   }
 
@@ -98,7 +142,7 @@ export function ClinicalCalendar({ createdCount, patients = [], onNotify }: Clin
     openScheduler(arg.startStr, arg.endStr);
   }
 
-  function createAppointmentFromScheduler(values: {
+  async function createAppointmentFromScheduler(values: {
     patientId: string;
     type: Appointment["type"];
     mode: AppointmentMode;
@@ -124,11 +168,42 @@ export function ClinicalCalendar({ createdCount, patients = [], onNotify }: Clin
     setSelectedId(appointment.id);
     setModalId(appointment.id);
     setScheduler(null);
+    if (workspaceId) {
+      const supabase = createBrowserSupabaseClient();
+      const { data: userData } = await supabase.auth.getUser();
+      const { data, error } = await supabase
+        .from("appointments")
+        .insert(mapAppointmentToDatabase(appointment, workspaceId, userData.user?.id ?? null))
+        .select("id, patient_id, starts_at, ends_at, status, mode, type, paid, room, location")
+        .single();
+
+      if (error) {
+        onNotify(`Nao foi possivel salvar a sessao no Supabase: ${error.message}`);
+        return;
+      }
+
+      const savedAppointment = mapDatabaseAppointment(data as DatabaseAppointment, patientNames);
+      setItems((current) => [savedAppointment, ...current.filter((item) => item.id !== appointment.id)]);
+      setSelectedId(savedAppointment.id);
+      setModalId(savedAppointment.id);
+    }
     onNotify(patient ? `Sessão vinculada ao paciente ${patient.name}.` : "Sessão criada sem paciente vinculado.");
   }
 
-  function updateAppointment(appointmentId: string, patch: Partial<Appointment>, message: string) {
+  async function updateAppointment(appointmentId: string, patch: Partial<Appointment>, message: string) {
     setItems((current) => current.map((appointment) => (appointment.id === appointmentId ? { ...appointment, ...patch } : appointment)));
+    if (workspaceId) {
+      const supabase = createBrowserSupabaseClient();
+      const { error } = await supabase
+        .from("appointments")
+        .update(mapAppointmentPatchToDatabase(patch))
+        .eq("id", appointmentId)
+        .eq("organization_id", workspaceId);
+      if (error) {
+        onNotify(`Nao foi possivel salvar a sessao: ${error.message}`);
+        return;
+      }
+    }
     onNotify(message);
   }
 
@@ -350,4 +425,103 @@ function addMinutes(value: string, minutes: number) {
   const date = new Date(value);
   date.setMinutes(date.getMinutes() + minutes);
   return date.toISOString();
+}
+
+type DatabaseAppointment = {
+  id: string;
+  patient_id: string | null;
+  starts_at: string;
+  ends_at: string;
+  status: string;
+  mode: string;
+  type: Appointment["type"] | null;
+  paid: boolean | null;
+  room: string | null;
+  location: string | null;
+};
+
+function mapDatabaseAppointment(row: DatabaseAppointment, patientNames: Map<string, string>): Appointment {
+  return {
+    id: row.id,
+    patientId: row.patient_id ?? undefined,
+    patientName: row.patient_id ? patientNames.get(row.patient_id) ?? "Paciente cadastrado" : "Paciente a definir",
+    start: row.starts_at,
+    end: row.ends_at,
+    type: row.type ?? "Terapia individual",
+    mode: mapDatabaseMode(row.mode),
+    status: mapDatabaseStatus(row.status),
+    paid: Boolean(row.paid),
+    room: row.room ?? row.location ?? "Sala 1"
+  };
+}
+
+function mapAppointmentToDatabase(appointment: Appointment, organizationId: string, professionalId: string | null) {
+  return {
+    organization_id: organizationId,
+    patient_id: appointment.patientId && isUuid(appointment.patientId) ? appointment.patientId : null,
+    professional_id: professionalId,
+    starts_at: appointment.start,
+    ends_at: appointment.end,
+    status: mapAppointmentStatus(appointment.status),
+    mode: mapAppointmentMode(appointment.mode),
+    type: appointment.type,
+    paid: appointment.paid,
+    room: appointment.room,
+    location: appointment.room
+  };
+}
+
+function mapAppointmentPatchToDatabase(patch: Partial<Appointment>) {
+  const payload: Record<string, string | boolean | null> = {};
+  if (patch.start) payload.starts_at = patch.start;
+  if (patch.end) payload.ends_at = patch.end;
+  if (patch.status) payload.status = mapAppointmentStatus(patch.status);
+  if (patch.mode) payload.mode = mapAppointmentMode(patch.mode);
+  if (patch.type) payload.type = patch.type;
+  if (typeof patch.paid === "boolean") payload.paid = patch.paid;
+  if (patch.room) {
+    payload.room = patch.room;
+    payload.location = patch.room;
+  }
+  if (patch.patientId !== undefined) payload.patient_id = patch.patientId && isUuid(patch.patientId) ? patch.patientId : null;
+  return payload;
+}
+
+function mapAppointmentStatus(status: AppointmentStatus) {
+  const statusMap: Record<AppointmentStatus, string> = {
+    confirmada: "confirmed",
+    pendente: "scheduled",
+    realizada: "completed",
+    faltou: "missed",
+    cancelada: "cancelled"
+  };
+  return statusMap[status];
+}
+
+function mapDatabaseStatus(status: string): AppointmentStatus {
+  const statusMap: Record<string, AppointmentStatus> = {
+    confirmed: "confirmada",
+    scheduled: "pendente",
+    completed: "realizada",
+    missed: "faltou",
+    cancelled: "cancelada",
+    cancelada: "cancelada",
+    confirmada: "confirmada",
+    pendente: "pendente",
+    realizada: "realizada",
+    faltou: "faltou"
+  };
+  return statusMap[status] ?? "pendente";
+}
+
+function mapAppointmentMode(mode: AppointmentMode) {
+  return mode === "online" ? "online" : "in_person";
+}
+
+function mapDatabaseMode(mode: string): AppointmentMode {
+  return mode === "online" ? "online" : "presencial";
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }

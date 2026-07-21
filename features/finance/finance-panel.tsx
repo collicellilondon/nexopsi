@@ -246,7 +246,7 @@ export function FinancePanel({ workspaceId, patients = [], searchQuery = "", onN
 
     const supabase = createBrowserSupabaseClient();
     const payload = prices.map((price) => mapPriceToDatabase(price, workspaceId));
-    const { data, error } = await supabase.from("service_prices").upsert(payload, { onConflict: "id" }).select("id, name, duration, value, recurrence, active");
+    const { data, error } = await supabase.from("service_prices").upsert(payload, { onConflict: "organization_id,name" }).select("id, name, duration, value, recurrence, active");
     if (error) {
       onNotify(`Nao foi possivel atualizar os valores: ${error.message}`);
       return;

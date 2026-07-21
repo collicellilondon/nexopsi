@@ -201,7 +201,12 @@ export function InteractiveHome() {
         .select("full_name, avatar_url, crp, phone, email, specialty, bio")
         .single();
 
-      await supabase.from("profiles").upsert(
+      if (error) {
+        notify(`Nao foi possivel salvar o cadastro profissional no Supabase: ${error.message}`);
+        return;
+      }
+
+      const { error: baseProfileError } = await supabase.from("profiles").upsert(
         {
           id: userId,
           full_name: profilePayload.full_name,
@@ -214,6 +219,10 @@ export function InteractiveHome() {
         },
         { onConflict: "id" }
       );
+
+      if (baseProfileError) {
+        notify(`Cadastro profissional salvo, mas o resumo do perfil nao foi atualizado: ${baseProfileError.message}`);
+      }
 
       const currentMetadata = userData.user?.user_metadata ?? {};
       const metadataResult = await supabase.auth.updateUser({
@@ -230,13 +239,7 @@ export function InteractiveHome() {
       });
 
       if (metadataResult.error) {
-        notify(`Não foi possível salvar no Supabase: ${metadataResult.error.message}`);
-        return;
-      }
-
-      if (error) {
-        notify("Cadastro salvo no Supabase. A tabela de perfis precisa receber a migração para gravar a ficha completa.");
-        return;
+        notify(`Cadastro salvo no Supabase, mas os metadados do login nao foram atualizados: ${metadataResult.error.message}`);
       }
 
       if (savedProfile) {
@@ -388,7 +391,7 @@ export function InteractiveHome() {
             icon={<Plus className="h-4 w-4" />}
             onAction={createSession}
           />
-          <ClinicalCalendar createdCount={sessionSeed} patients={patients} onNotify={notify} />
+          <ClinicalCalendar createdCount={sessionSeed} workspaceId={workspaceId} patients={patients} onNotify={notify} />
         </>
       );
     }
@@ -476,7 +479,7 @@ export function InteractiveHome() {
           icon={<Settings className="h-4 w-4" />}
           onAction={() => notify("Tema padrão Nexopsi selecionado.")}
         />
-        <ThemeSettings onNotify={notify} />
+        <ThemeSettings workspaceId={workspaceId} onNotify={notify} />
         <div className="mt-6">
           <ProfessionalProfile initialProfile={professionalProfile} onNotify={notify} onSave={saveProfessionalProfile} />
         </div>

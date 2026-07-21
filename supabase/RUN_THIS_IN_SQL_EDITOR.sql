@@ -109,6 +109,143 @@ create table if not exists invoices (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists appointments (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  patient_id uuid references patients(id) on delete set null,
+  professional_id uuid references profiles(id) on delete set null,
+  starts_at timestamptz not null,
+  ends_at timestamptz not null,
+  status text not null default 'scheduled',
+  mode text not null default 'in_person',
+  type text,
+  paid boolean not null default false,
+  room text,
+  recurrence_rule text,
+  location text,
+  color text,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (ends_at > starts_at)
+);
+
+create table if not exists clinical_sessions (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  appointment_id uuid references appointments(id) on delete set null,
+  patient_id uuid references patients(id) on delete cascade,
+  professional_id uuid references profiles(id) on delete set null,
+  title text,
+  summary text,
+  status text not null default 'draft',
+  duration_minutes integer,
+  draft boolean not null default true,
+  autosaved_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists clinical_notes (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  clinical_session_id uuid references clinical_sessions(id) on delete cascade,
+  patient_id uuid references patients(id) on delete cascade,
+  content text,
+  evolution text,
+  therapeutic_objectives text,
+  techniques_used text,
+  next_session_plan text,
+  tasks text,
+  created_by uuid references profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists document_templates (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  name text not null,
+  category text not null,
+  body text not null,
+  variables text[] not null default '{}',
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists documents (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  patient_id uuid references patients(id) on delete set null,
+  template_id uuid references document_templates(id) on delete set null,
+  title text not null,
+  category text,
+  body text not null,
+  status text not null default 'draft',
+  signed_at timestamptz,
+  created_by uuid references profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists receipts (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  invoice_id text references invoices(id) on delete set null,
+  patient_id uuid references patients(id) on delete set null,
+  amount numeric(12,2) not null default 0,
+  paid_at date,
+  method text,
+  pdf_payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists prescriptions (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  patient_id uuid references patients(id) on delete set null,
+  title text not null,
+  body text not null,
+  status text not null default 'draft',
+  created_by uuid references profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists reports (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  patient_id uuid references patients(id) on delete set null,
+  title text not null,
+  category text not null default 'clinical',
+  payload jsonb not null default '{}'::jsonb,
+  created_by uuid references profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists app_settings (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  key text not null,
+  value jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now(),
+  unique (organization_id, key)
+);
+
+create table if not exists audit_logs (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid references organizations(id) on delete cascade,
+  actor_id uuid references profiles(id) on delete set null,
+  action text not null,
+  entity_table text not null,
+  entity_id text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
 alter table profiles
   add column if not exists email text,
   add column if not exists specialty text,
@@ -128,7 +265,30 @@ alter table patients
   add column if not exists last_session text;
 
 alter table invoices
-  add column if not exists patient_cpf text;
+  add column if not exists patient_cpf text,
+  add column if not exists patient_phone text,
+  add column if not exists patient_email text,
+  add column if not exists installments text;
+
+alter table appointments
+  add column if not exists type text,
+  add column if not exists paid boolean not null default false,
+  add column if not exists room text,
+  add column if not exists notes text;
+
+alter table clinical_sessions
+  add column if not exists title text,
+  add column if not exists summary text,
+  add column if not exists status text not null default 'draft';
+
+alter table clinical_notes
+  add column if not exists patient_id uuid references patients(id) on delete cascade,
+  add column if not exists updated_at timestamptz not null default now();
+
+alter table documents
+  add column if not exists category text,
+  add column if not exists status text not null default 'draft',
+  add column if not exists updated_at timestamptz not null default now();
 
 create index if not exists organization_members_profile_idx
   on organization_members (profile_id, organization_id)
@@ -143,8 +303,32 @@ create index if not exists professional_profiles_org_profile_idx
 create index if not exists service_prices_organization_idx
   on service_prices (organization_id, active);
 
+create unique index if not exists service_prices_organization_name_unique
+  on service_prices (organization_id, name);
+
 create index if not exists invoices_organization_status_idx
   on invoices (organization_id, status, due_date);
+
+create index if not exists appointments_organization_starts_idx
+  on appointments (organization_id, starts_at);
+
+create index if not exists clinical_sessions_organization_patient_idx
+  on clinical_sessions (organization_id, patient_id);
+
+create index if not exists clinical_notes_organization_patient_idx
+  on clinical_notes (organization_id, patient_id);
+
+create index if not exists documents_organization_patient_idx
+  on documents (organization_id, patient_id);
+
+create index if not exists receipts_organization_patient_idx
+  on receipts (organization_id, patient_id);
+
+create index if not exists prescriptions_organization_patient_idx
+  on prescriptions (organization_id, patient_id);
+
+create index if not exists reports_organization_patient_idx
+  on reports (organization_id, patient_id);
 
 create or replace function is_org_member(target_organization_id uuid)
 returns boolean
@@ -168,6 +352,16 @@ alter table patients enable row level security;
 alter table professional_profiles enable row level security;
 alter table service_prices enable row level security;
 alter table invoices enable row level security;
+alter table appointments enable row level security;
+alter table clinical_sessions enable row level security;
+alter table clinical_notes enable row level security;
+alter table document_templates enable row level security;
+alter table documents enable row level security;
+alter table receipts enable row level security;
+alter table prescriptions enable row level security;
+alter table reports enable row level security;
+alter table app_settings enable row level security;
+alter table audit_logs enable row level security;
 
 do $$
 begin
@@ -318,6 +512,135 @@ begin
       for all
       using (is_org_member(organization_id))
       with check (is_org_member(organization_id));
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'appointments'
+      and policyname = 'members can manage own appointments'
+  ) then
+    create policy "members can manage own appointments"
+      on appointments
+      for all
+      using (is_org_member(organization_id))
+      with check (is_org_member(organization_id));
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'clinical_sessions'
+      and policyname = 'members can manage own clinical sessions'
+  ) then
+    create policy "members can manage own clinical sessions"
+      on clinical_sessions
+      for all
+      using (is_org_member(organization_id))
+      with check (is_org_member(organization_id));
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'clinical_notes'
+      and policyname = 'members can manage own clinical notes'
+  ) then
+    create policy "members can manage own clinical notes"
+      on clinical_notes
+      for all
+      using (is_org_member(organization_id))
+      with check (is_org_member(organization_id));
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'document_templates'
+      and policyname = 'members can manage own document templates'
+  ) then
+    create policy "members can manage own document templates"
+      on document_templates
+      for all
+      using (is_org_member(organization_id))
+      with check (is_org_member(organization_id));
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'documents'
+      and policyname = 'members can manage own documents'
+  ) then
+    create policy "members can manage own documents"
+      on documents
+      for all
+      using (is_org_member(organization_id))
+      with check (is_org_member(organization_id));
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'receipts'
+      and policyname = 'members can manage own receipts'
+  ) then
+    create policy "members can manage own receipts"
+      on receipts
+      for all
+      using (is_org_member(organization_id))
+      with check (is_org_member(organization_id));
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'prescriptions'
+      and policyname = 'members can manage own prescriptions'
+  ) then
+    create policy "members can manage own prescriptions"
+      on prescriptions
+      for all
+      using (is_org_member(organization_id))
+      with check (is_org_member(organization_id));
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'reports'
+      and policyname = 'members can manage own reports'
+  ) then
+    create policy "members can manage own reports"
+      on reports
+      for all
+      using (is_org_member(organization_id))
+      with check (is_org_member(organization_id));
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'app_settings'
+      and policyname = 'members can manage own app settings'
+  ) then
+    create policy "members can manage own app settings"
+      on app_settings
+      for all
+      using (is_org_member(organization_id))
+      with check (is_org_member(organization_id));
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'audit_logs'
+      and policyname = 'members can read own audit logs'
+  ) then
+    create policy "members can read own audit logs"
+      on audit_logs
+      for select
+      using (organization_id is null or is_org_member(organization_id));
   end if;
 end $$;
 
