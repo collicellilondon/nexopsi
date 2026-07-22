@@ -263,7 +263,7 @@ create policy "professional avatars own delete"
   on storage.objects for delete to authenticated
   using (bucket_id = 'professional-avatars' and split_part(name, '/', 1) = auth.uid()::text);
 
-drop function if exists public.ensure_personal_workspace(text);
-drop function if exists public.save_professional_profile(text, text, text, text, text, text, text);
-drop function if exists public.save_service_prices(jsonb);
-drop function if exists public.is_org_member(uuid);
+revoke execute on function public.ensure_personal_workspace(text) from public, anon, authenticated;
+revoke execute on function public.save_professional_profile(text, text, text, text, text, text, text) from public, anon, authenticated;
+revoke execute on function public.save_service_prices(jsonb) from public, anon, authenticated;
+revoke execute on function public.is_org_member(uuid) from public, anon, authenticated;
