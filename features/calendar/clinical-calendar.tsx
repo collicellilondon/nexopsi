@@ -59,6 +59,8 @@ export function ClinicalCalendar({ createdCount, workspaceId, patients = [], onN
     if (createdCount === 0) return;
     const hour = 9 + createdCount;
     openScheduler(`2026-07-19T${String(hour).padStart(2, "0")}:00:00`, `2026-07-19T${String(hour).padStart(2, "0")}:50:00`);
+  // openScheduler intentionally reads the latest notifier from the component scope.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [createdCount]);
 
   useEffect(() => {
@@ -89,6 +91,8 @@ export function ClinicalCalendar({ createdCount, workspaceId, patients = [], onN
     return () => {
       mounted = false;
     };
+  // onNotify is only used to report load failures for this fetch cycle.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId, patientNames]);
 
   const events = useMemo(

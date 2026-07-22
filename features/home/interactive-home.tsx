@@ -471,9 +471,9 @@ export function InteractiveHome() {
           icon={<Settings className="h-4 w-4" />}
           onAction={() => notify("Tema padrão Nexopsi selecionado.")}
         />
-        <ThemeSettings workspaceId={workspaceId} onNotify={notify} />
+          <ThemeSettings workspaceId={workspaceId} onNotify={notify} />
         <div className="mt-6">
-          <ProfessionalProfile initialProfile={professionalProfile} onNotify={notify} onSave={saveProfessionalProfile} />
+          <ProfessionalProfile initialProfile={professionalProfile} onNotify={notify} onSave={saveProfessionalProfile} onUploadPhoto={uploadProfessionalPhoto} />
         </div>
       </>
     );
@@ -505,6 +505,37 @@ export function InteractiveHome() {
       {patientModalOpen ? <PatientRegistrationModal professionalName={professionalProfile.name} onClose={() => setPatientModalOpen(false)} onCreate={savePatient} /> : null}
     </AppShell>
   );
+
+  async function uploadProfessionalPhoto(file: File) {
+    try {
+      const supabase = createBrowserSupabaseClient();
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+      if (userError || !userId) {
+        notify("Entre novamente para enviar a foto profissional ao Supabase.");
+        return null;
+      }
+
+      const extension = file.name.split(".").pop()?.toLowerCase() || file.type.split("/").pop() || "jpg";
+      const path = `${userId}/avatar-${Date.now()}.${extension}`;
+      const { error } = await supabase.storage.from("professional-avatars").upload(path, file, {
+        cacheControl: "3600",
+        contentType: file.type,
+        upsert: true
+      });
+
+      if (error) {
+        notify(`Nao foi possivel enviar a foto ao Supabase Storage: ${error.message}`);
+        return null;
+      }
+
+      const { data } = supabase.storage.from("professional-avatars").getPublicUrl(path);
+      return data.publicUrl;
+    } catch {
+      notify("Nao foi possivel conectar ao Supabase Storage para enviar a foto.");
+      return null;
+    }
+  }
 }
 
 function includesAny(value: string, terms: string[]) {
@@ -561,11 +592,17 @@ type DatabaseProfessionalProfile = {
   email: string | null;
   specialty: string | null;
   bio: string | null;
+  professional_name?: string | null;
+  professional_registration?: string | null;
+  professional_bio?: string | null;
+  profile_photo_url?: string | null;
 };
 
 type ProfessionalProfilePayload = {
   organization_id: string;
   profile_id: string;
+  user_id: string;
+  clinic_id: string;
   full_name: string;
   avatar_url: string | null;
   crp: string | null;
@@ -573,6 +610,13 @@ type ProfessionalProfilePayload = {
   email: string | null;
   specialty: string | null;
   bio: string | null;
+  professional_name: string;
+  professional_registration: string | null;
+  professional_bio: string | null;
+  document_signature: string | null;
+  profile_photo_url: string | null;
+  currency: string;
+  timezone: string;
 };
 
 async function ensureWorkspace(supabase: ReturnType<typeof createBrowserSupabaseClient>, profileName: string) {
@@ -636,32 +680,55 @@ function mapPatientToDatabase(patient: Patient, organizationId: string) {
 }
 
 function mapProfessionalProfileToDatabase(profile: ProfessionalProfileData, organizationId: string, userId: string, fallbackEmail: string): ProfessionalProfilePayload {
+  const fullName = profile.name || "Profissional Nexopsi";
+  const register = profile.register || null;
   return {
     organization_id: organizationId,
     profile_id: userId,
-    full_name: profile.name || "Profissional Nexopsi",
+    user_id: userId,
+    clinic_id: organizationId,
+    full_name: fullName,
     avatar_url: profile.photoUrl || null,
-    crp: profile.register || null,
+    crp: register,
     phone: profile.phone || null,
     email: profile.email || fallbackEmail || null,
     specialty: profile.specialty || null,
-    bio: profile.bio || null
+    bio: profile.bio || null,
+    professional_name: fullName,
+    professional_registration: register,
+    professional_bio: profile.bio || null,
+    document_signature: register ? `${fullName} - ${register}` : fullName,
+    profile_photo_url: profile.photoUrl || null,
+    currency: "BRL",
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo"
   };
 }
 
 function mapDatabaseProfessionalProfile(profile: DatabaseProfessionalProfile, fallback: ProfessionalProfileData): ProfessionalProfileData {
   return {
-    name: profile.full_name ?? fallback.name,
-    register: profile.crp ?? "",
+    name: profile.professional_name ?? profile.full_name ?? fallback.name,
+    register: profile.professional_registration ?? profile.crp ?? "",
     email: profile.email ?? fallback.email,
     phone: profile.phone ?? "",
     specialty: profile.specialty ?? fallback.specialty,
-    bio: profile.bio ?? fallback.bio,
-    photoUrl: profile.avatar_url ?? ""
+    bio: profile.professional_bio ?? profile.bio ?? fallback.bio,
+    photoUrl: profile.profile_photo_url ?? profile.avatar_url ?? ""
   };
 }
 
 async function saveProfessionalProfileDirectly(supabase: ReturnType<typeof createBrowserSupabaseClient>, payload: ProfessionalProfilePayload) {
+  const legacyPayload = {
+    organization_id: payload.organization_id,
+    profile_id: payload.profile_id,
+    full_name: payload.full_name,
+    avatar_url: payload.avatar_url,
+    crp: payload.crp,
+    phone: payload.phone,
+    email: payload.email,
+    specialty: payload.specialty,
+    bio: payload.bio
+  };
+
   const { error: profileError } = await supabase.from("profiles").upsert(
     {
       id: payload.profile_id,
@@ -687,21 +754,38 @@ async function saveProfessionalProfileDirectly(supabase: ReturnType<typeof creat
 
   if (findError) return { ok: false, message: findError.message, profile: null };
 
-  const query = existingProfile?.id
+  const modernQuery = existingProfile?.id
     ? supabase
         .from("professional_profiles")
         .update({ ...payload, updated_at: new Date().toISOString() })
         .eq("id", existingProfile.id)
-        .select("full_name, avatar_url, crp, phone, email, specialty, bio")
+        .select("full_name, avatar_url, crp, phone, email, specialty, bio, professional_name, professional_registration, professional_bio, profile_photo_url")
         .single()
     : supabase
         .from("professional_profiles")
         .insert(payload)
-        .select("full_name, avatar_url, crp, phone, email, specialty, bio")
+        .select("full_name, avatar_url, crp, phone, email, specialty, bio, professional_name, professional_registration, professional_bio, profile_photo_url")
         .single();
 
-  const { data, error } = await query;
-  if (error) return { ok: false, message: error.message, profile: null };
+  const { data, error } = await modernQuery;
+  if (error) {
+    const legacyQuery = existingProfile?.id
+      ? supabase
+          .from("professional_profiles")
+          .update({ ...legacyPayload, updated_at: new Date().toISOString() })
+          .eq("id", existingProfile.id)
+          .select("full_name, avatar_url, crp, phone, email, specialty, bio")
+          .single()
+      : supabase
+          .from("professional_profiles")
+          .insert(legacyPayload)
+          .select("full_name, avatar_url, crp, phone, email, specialty, bio")
+          .single();
+
+    const legacyResult = await legacyQuery;
+    if (legacyResult.error) return { ok: false, message: legacyResult.error.message, profile: null };
+    return { ok: true, message: "", profile: legacyResult.data as DatabaseProfessionalProfile };
+  }
   return { ok: true, message: "", profile: data as DatabaseProfessionalProfile };
 }
 

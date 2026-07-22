@@ -21,11 +21,14 @@ type ProfessionalProfileProps = {
   initialProfile: ProfessionalProfileData;
   onNotify: (message: string) => void;
   onSave: (profile: ProfessionalProfileData) => boolean | Promise<boolean>;
+  onUploadPhoto?: (file: File) => Promise<string | null>;
 };
 
-export function ProfessionalProfile({ initialProfile, onNotify, onSave }: ProfessionalProfileProps) {
+export function ProfessionalProfile({ initialProfile, onNotify, onSave, onUploadPhoto }: ProfessionalProfileProps) {
   const [profile, setProfile] = useState<ProfessionalProfileData>(initialProfile);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -38,31 +41,42 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave }: Profes
   }
 
   async function saveProfile() {
+    setSaving(true);
     const success = await onSave(profile);
+    setSaving(false);
     setSaved(success);
   }
 
-  function changePhoto(file?: File) {
+  async function changePhoto(file?: File) {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       onNotify("Selecione um arquivo de imagem para a foto profissional.");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const photoUrl = String(reader.result);
-      setProfile((current) => ({ ...current, photoUrl }));
-      setSaved(false);
-      onNotify("Foto carregada. Clique em Salvar cadastro para aplicar no cabeçalho.");
-    };
-    reader.readAsDataURL(file);
+    if (file.size > 4 * 1024 * 1024) {
+      onNotify("A foto precisa ter ate 4 MB para ser salva no Supabase.");
+      return;
+    }
+    if (!onUploadPhoto) {
+      onNotify("Upload de foto indisponivel nesta tela.");
+      return;
+    }
+
+    setPhotoUploading(true);
+    const photoUrl = await onUploadPhoto(file);
+    setPhotoUploading(false);
+
+    if (!photoUrl) return;
+    setProfile((current) => ({ ...current, photoUrl }));
+    setSaved(false);
+    onNotify("Foto enviada ao Supabase. Clique em Salvar cadastro para atualizar documentos e cabecalho.");
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Cadastro do psicólogo</CardTitle>
-        <CardDescription>Informações usadas em documentos, recibos, prontuários e relatórios.</CardDescription>
+        <CardTitle>Cadastro do psicologo</CardTitle>
+        <CardDescription>Informacoes usadas em documentos, recibos, prontuarios e relatorios.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <div className="rounded-lg border border-border bg-background p-5 text-center">
@@ -73,18 +87,12 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave }: Profes
               getInitials(profile.name)
             )}
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="sr-only"
-            onChange={(event) => changePhoto(event.target.files?.[0])}
-          />
-          <Button type="button" variant="outline" className="mt-4 w-full" onClick={() => fileInputRef.current?.click()}>
+          <input ref={fileInputRef} type="file" accept="image/*" className="sr-only" onChange={(event) => changePhoto(event.target.files?.[0])} />
+          <Button type="button" variant="outline" className="mt-4 w-full" disabled={photoUploading} onClick={() => fileInputRef.current?.click()}>
             <Camera className="h-4 w-4" />
-            Alterar foto
+            {photoUploading ? "Enviando..." : "Alterar foto"}
           </Button>
-          <p className="mt-3 text-sm text-ink-muted">Foto profissional de {profile.name || "psicólogo"} para cabeçalhos e documentos.</p>
+          <p className="mt-3 text-sm text-ink-muted">Foto profissional de {profile.name || "psicologo"} para cabecalhos e documentos.</p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -101,13 +109,13 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave }: Profes
           {saved ? (
             <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm font-bold text-green-700 md:col-span-2">
               <CheckCircle2 className="h-4 w-4" />
-              Cadastro salvo. O cabeçalho já foi atualizado com {profile.name || "o psicólogo"}.
+              Cadastro salvo. O cabecalho ja foi atualizado com {profile.name || "o psicologo"}.
             </div>
           ) : null}
           <div className="flex justify-end md:col-span-2">
-            <Button type="button" onClick={saveProfile}>
+            <Button type="button" disabled={saving || photoUploading} onClick={saveProfile}>
               <Save className="h-4 w-4" />
-              Salvar cadastro
+              {saving ? "Salvando..." : "Salvar cadastro"}
             </Button>
           </div>
         </div>

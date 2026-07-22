@@ -348,7 +348,6 @@ export function FinancePanel({ workspaceId, patients = [], searchQuery = "", onN
           onGeneratePdf={generateInvoicePdf}
           onSendWhatsApp={sendInvoiceWhatsApp}
           onSendEmail={sendInvoiceEmail}
-          onNotify={onNotify}
         />
       ) : null}
 
@@ -578,8 +577,7 @@ function InvoicesTab({
   onCancel,
   onGeneratePdf,
   onSendWhatsApp,
-  onSendEmail,
-  onNotify
+  onSendEmail
 }: {
   filtered: Invoice[];
   query: string;
@@ -592,7 +590,6 @@ function InvoicesTab({
   onGeneratePdf: (invoice: Invoice) => void;
   onSendWhatsApp: (invoice: Invoice) => void;
   onSendEmail: (invoice: Invoice) => void;
-  onNotify: (message: string) => void;
 }) {
   return (
     <Card>
@@ -858,6 +855,8 @@ function PriceModal({ onClose, onSave }: { onClose: () => void; onSave: (price: 
   );
 }
 
+// Mantido como layout legado de referencia enquanto a versao moderna e usada na tela.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function PrintableInvoice({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
   return (
     <div className="print-sheet fixed inset-0 z-[60] overflow-y-auto bg-white p-6 print:p-0">

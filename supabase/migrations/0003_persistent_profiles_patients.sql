@@ -235,6 +235,21 @@ create table if not exists app_settings (
   unique (organization_id, key)
 );
 
+create table if not exists user_settings (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  clinic_id uuid references organizations(id) on delete set null,
+  selected_theme text not null default 'nexopsi',
+  language text not null default 'pt-BR',
+  timezone text not null default 'America/Sao_Paulo',
+  currency text not null default 'BRL',
+  date_format text not null default 'dd/MM/yyyy',
+  notification_preferences jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id)
+);
+
 create table if not exists audit_logs (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid references organizations(id) on delete cascade,
@@ -250,6 +265,33 @@ alter table profiles
   add column if not exists email text,
   add column if not exists specialty text,
   add column if not exists bio text;
+
+alter table professional_profiles
+  add column if not exists user_id uuid references auth.users(id) on delete cascade,
+  add column if not exists clinic_id uuid references organizations(id) on delete cascade,
+  add column if not exists professional_name text,
+  add column if not exists professional_registration text,
+  add column if not exists professional_bio text,
+  add column if not exists document_signature text,
+  add column if not exists profile_photo_url text,
+  add column if not exists currency text not null default 'BRL',
+  add column if not exists timezone text not null default 'America/Sao_Paulo';
+
+update professional_profiles
+   set user_id = coalesce(user_id, profile_id),
+       clinic_id = coalesce(clinic_id, organization_id),
+       professional_name = coalesce(professional_name, full_name),
+       professional_registration = coalesce(professional_registration, crp),
+       professional_bio = coalesce(professional_bio, bio),
+       document_signature = coalesce(document_signature, trim(both ' -' from concat(coalesce(full_name, ''), ' - ', coalesce(crp, '')))),
+       profile_photo_url = coalesce(profile_photo_url, avatar_url)
+ where user_id is null
+    or clinic_id is null
+    or professional_name is null
+    or professional_registration is null
+    or professional_bio is null
+    or document_signature is null
+    or profile_photo_url is null;
 
 alter table patients
   add column if not exists email text,
@@ -296,6 +338,18 @@ alter table app_settings
   add column if not exists value jsonb not null default '{}'::jsonb,
   add column if not exists updated_at timestamptz not null default now();
 
+alter table user_settings
+  add column if not exists user_id uuid references auth.users(id) on delete cascade,
+  add column if not exists clinic_id uuid references organizations(id) on delete set null,
+  add column if not exists selected_theme text not null default 'nexopsi',
+  add column if not exists language text not null default 'pt-BR',
+  add column if not exists timezone text not null default 'America/Sao_Paulo',
+  add column if not exists currency text not null default 'BRL',
+  add column if not exists date_format text not null default 'dd/MM/yyyy',
+  add column if not exists notification_preferences jsonb not null default '{}'::jsonb,
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
+
 create index if not exists organization_members_profile_idx
   on organization_members (profile_id, organization_id)
   where active = true;
@@ -305,6 +359,10 @@ create index if not exists patients_organization_status_idx
 
 create index if not exists professional_profiles_org_profile_idx
   on professional_profiles (organization_id, profile_id);
+
+create unique index if not exists professional_profiles_user_unique
+  on professional_profiles (user_id)
+  where user_id is not null;
 
 create index if not exists service_prices_organization_idx
   on service_prices (organization_id, active);
@@ -339,6 +397,9 @@ create index if not exists reports_organization_patient_idx
 create unique index if not exists app_settings_organization_key_unique
   on app_settings (organization_id, key);
 
+create unique index if not exists user_settings_user_unique
+  on user_settings (user_id);
+
 create or replace function is_org_member(target_organization_id uuid)
 returns boolean
 language sql
@@ -370,6 +431,7 @@ alter table receipts enable row level security;
 alter table prescriptions enable row level security;
 alter table reports enable row level security;
 alter table app_settings enable row level security;
+alter table user_settings enable row level security;
 alter table audit_logs enable row level security;
 
 do $$
@@ -643,6 +705,19 @@ begin
   if not exists (
     select 1 from pg_policies
     where schemaname = 'public'
+      and tablename = 'user_settings'
+      and policyname = 'users can manage own settings'
+  ) then
+    create policy "users can manage own settings"
+      on user_settings
+      for all
+      using (user_id = auth.uid())
+      with check (user_id = auth.uid());
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
       and tablename = 'audit_logs'
       and policyname = 'members can read own audit logs'
   ) then
@@ -650,6 +725,87 @@ begin
       on audit_logs
       for select
       using (organization_id is null or is_org_member(organization_id));
+  end if;
+end $$;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'professional-avatars',
+  'professional-avatars',
+  true,
+  4194304,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+)
+on conflict (id) do update
+  set public = true,
+      file_size_limit = 4194304,
+      allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+      and policyname = 'public can read professional avatars'
+  ) then
+    create policy "public can read professional avatars"
+      on storage.objects
+      for select
+      using (bucket_id = 'professional-avatars');
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+      and policyname = 'users can upload own professional avatar'
+  ) then
+    create policy "users can upload own professional avatar"
+      on storage.objects
+      for insert
+      with check (
+        bucket_id = 'professional-avatars'
+        and auth.role() = 'authenticated'
+        and (storage.foldername(name))[1] = auth.uid()::text
+      );
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+      and policyname = 'users can update own professional avatar'
+  ) then
+    create policy "users can update own professional avatar"
+      on storage.objects
+      for update
+      using (
+        bucket_id = 'professional-avatars'
+        and auth.role() = 'authenticated'
+        and (storage.foldername(name))[1] = auth.uid()::text
+      )
+      with check (
+        bucket_id = 'professional-avatars'
+        and auth.role() = 'authenticated'
+        and (storage.foldername(name))[1] = auth.uid()::text
+      );
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+      and policyname = 'users can delete own professional avatar'
+  ) then
+    create policy "users can delete own professional avatar"
+      on storage.objects
+      for delete
+      using (
+        bucket_id = 'professional-avatars'
+        and auth.role() = 'authenticated'
+        and (storage.foldername(name))[1] = auth.uid()::text
+      );
   end if;
 end $$;
 
@@ -761,24 +917,42 @@ begin
   insert into professional_profiles (
     organization_id,
     profile_id,
+    user_id,
+    clinic_id,
     full_name,
     avatar_url,
     crp,
     phone,
     email,
     specialty,
-    bio
+    bio,
+    professional_name,
+    professional_registration,
+    professional_bio,
+    document_signature,
+    profile_photo_url,
+    currency,
+    timezone
   )
   values (
     workspace_id,
     current_user_id,
+    current_user_id,
+    workspace_id,
     resolved_name,
     nullif(profile_photo_url, ''),
     nullif(profile_register, ''),
     nullif(profile_phone, ''),
     coalesce(nullif(profile_email, ''), auth.jwt() ->> 'email'),
     nullif(profile_specialty, ''),
-    nullif(profile_bio, '')
+    nullif(profile_bio, ''),
+    resolved_name,
+    nullif(profile_register, ''),
+    nullif(profile_bio, ''),
+    trim(both ' -' from concat(resolved_name, ' - ', coalesce(nullif(profile_register, ''), ''))),
+    nullif(profile_photo_url, ''),
+    'BRL',
+    'America/Sao_Paulo'
   )
   on conflict (organization_id, profile_id) do update
     set full_name = excluded.full_name,
@@ -788,6 +962,15 @@ begin
         email = excluded.email,
         specialty = excluded.specialty,
         bio = excluded.bio,
+        user_id = excluded.user_id,
+        clinic_id = excluded.clinic_id,
+        professional_name = excluded.professional_name,
+        professional_registration = excluded.professional_registration,
+        professional_bio = excluded.professional_bio,
+        document_signature = excluded.document_signature,
+        profile_photo_url = excluded.profile_photo_url,
+        currency = excluded.currency,
+        timezone = excluded.timezone,
         updated_at = now();
 
   return query
