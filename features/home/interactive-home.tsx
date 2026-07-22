@@ -19,7 +19,7 @@ import type { Patient } from "@/lib/types";
 
 export function InteractiveHome() {
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [patientModalOpen, setPatientModalOpen] = useState(false);
   const [sessionSeed, setSessionSeed] = useState(0);
   const [activeView, setActiveView] = useState<AppView>("inicio");
@@ -64,22 +64,11 @@ export function InteractiveHome() {
           return;
         }
 
-        const accessToken = sessionData.session.access_token;
-        if (!accessToken) {
-          clearLocalSessionCookie();
-          redirectToLogin();
-          return;
-        }
-
-        const profileResult = await fetchProfessionalProfile(accessToken);
-        if (!profileResult.ok) {
-          notify(profileResult.message);
-          return;
-        }
+        const currentUserId = sessionData.session.user.id;
         if (!active) return;
-        setWorkspaceId(profileResult.organizationId);
+        setUserId(currentUserId);
 
-        const resolvedProfile = profileResult.profile;
+        const resolvedProfile = await loadProfessionalProfile(supabase, currentUserId, sessionData.session.user.email ?? "");
 
         setProfessionalProfile(resolvedProfile);
         notify(resolvedProfile.name ? `Cadastro profissional carregado para ${resolvedProfile.name}.` : "Cadastre seus dados profissionais para personalizar o portal.");
@@ -87,7 +76,7 @@ export function InteractiveHome() {
         const { data: savedPatients, error: patientsError } = await supabase
           .from("patients")
           .select("id, full_name, cpf, birth_date, status, tags, notes, email, phone, address, emergency_contact, guardian, occupation, referral_source, main_complaint, pending_balance, next_session, last_session")
-          .eq("organization_id", profileResult.organizationId)
+          .eq("user_id", currentUserId)
           .order("created_at", { ascending: false });
 
         if (patientsError) {
@@ -134,10 +123,17 @@ export function InteractiveHome() {
 
     try {
       const supabase = createBrowserSupabaseClient();
-      const organizationId = workspaceId ?? (await ensureWorkspace(supabase, professionalProfile.name || "Profissional Nexopsi"));
-      setWorkspaceId(organizationId);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const currentUserId = sessionData.session?.user.id;
+      if (!currentUserId) {
+        clearLocalSessionCookie();
+        redirectToLogin();
+        notify("Sua sessao expirou. Entre novamente para salvar o paciente no Supabase.");
+        return;
+      }
+      setUserId(currentUserId);
 
-      const payload = mapPatientToDatabase(patient, organizationId);
+      const payload = mapPatientToDatabase(patient, currentUserId);
       const { data, error } = await supabase.from("patients").insert(payload).select("id, full_name, cpf, birth_date, status, tags, notes, email, phone, address, emergency_contact, guardian, occupation, referral_source, main_complaint, pending_balance, next_session, last_session").single();
       if (error) {
         notify(`Nao foi possivel salvar o paciente no Supabase: ${error.message}`);
@@ -160,21 +156,21 @@ export function InteractiveHome() {
     try {
       const supabase = createBrowserSupabaseClient();
       const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-      if (!accessToken) {
+      const currentUser = sessionData.session?.user;
+      if (!currentUser?.id) {
         clearLocalSessionCookie();
         notify("Sua sessao expirou. Entre novamente para salvar o cadastro profissional no Supabase.");
         redirectToLogin();
         return false;
       }
 
-      const saved = await postProfessionalProfile(accessToken, profile);
+      const saved = await saveProfessionalProfileDirectly(supabase, currentUser.id, currentUser.email ?? "", profile);
       if (!saved.ok) {
         notify(saved.message);
         return false;
       }
 
-      setWorkspaceId(saved.organizationId);
+      setUserId(currentUser.id);
       setProfessionalProfile(saved.profile);
       const { data: userData } = await supabase.auth.getUser();
       const currentMetadata = userData.user?.user_metadata ?? {};
@@ -334,7 +330,7 @@ export function InteractiveHome() {
             icon={<Plus className="h-4 w-4" />}
             onAction={createSession}
           />
-          <ClinicalCalendar createdCount={sessionSeed} workspaceId={workspaceId} patients={patients} onNotify={notify} />
+          <ClinicalCalendar createdCount={sessionSeed} userId={userId} patients={patients} onNotify={notify} />
         </>
       );
     }
@@ -364,7 +360,7 @@ export function InteractiveHome() {
             icon={<WalletCards className="h-4 w-4" />}
             onAction={() => notify("Use o botão Nova fatura dentro do financeiro.")}
           />
-          <FinancePanel workspaceId={workspaceId} patients={patients} searchQuery={activeView === "financeiro" ? globalFilter : ""} onNotify={notify} />
+          <FinancePanel userId={userId} patients={patients} searchQuery={activeView === "financeiro" ? globalFilter : ""} onNotify={notify} />
         </>
       );
     }
@@ -422,7 +418,7 @@ export function InteractiveHome() {
           icon={<Settings className="h-4 w-4" />}
           onAction={() => notify("Tema padrão Nexopsi selecionado.")}
         />
-          <ThemeSettings workspaceId={workspaceId} onNotify={notify} />
+          <ThemeSettings onNotify={notify} />
         <div className="mt-6">
           <ProfessionalProfile initialProfile={professionalProfile} onNotify={notify} onSave={saveProfessionalProfile} onUploadPhoto={uploadProfessionalPhoto} />
         </div>
@@ -510,56 +506,70 @@ function clearLocalSessionCookie() {
   document.cookie = "nexopsi_session=; path=/; max-age=0; samesite=lax";
 }
 
-async function fetchProfessionalProfile(accessToken: string) {
-  try {
-    const response = await fetch("/api/professional-profile", {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-    const payload = await response.json();
-    if (!response.ok) return { ok: false as const, message: readApiError(payload), organizationId: "", profile: emptyProfessionalProfile() };
-    return {
-      ok: true as const,
-      organizationId: String(payload.organizationId ?? ""),
-      profile: normalizeApiProfile(payload.profile)
-    };
-  } catch {
-    return { ok: false as const, message: "Nao foi possivel carregar o cadastro profissional pelo servidor.", organizationId: "", profile: emptyProfessionalProfile() };
-  }
+async function loadProfessionalProfile(supabase: ReturnType<typeof createBrowserSupabaseClient>, userId: string, fallbackEmail: string) {
+  const { data, error } = await supabase
+    .from("professional_profiles")
+    .select("full_name, crp, email, phone, specialty, bio, avatar_url")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!error && data) return normalizeApiProfile(data);
+
+  const { data: profileData } = await supabase
+    .from("profiles")
+    .select("full_name, crp, email, phone, specialty, bio, avatar_url")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  return normalizeApiProfile(profileData ?? { email: fallbackEmail });
 }
 
-async function postProfessionalProfile(accessToken: string, profile: ProfessionalProfileData) {
-  try {
-    const response = await fetch("/api/professional-profile", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(profile)
-    });
-    const payload = await response.json();
-    if (!response.ok) return { ok: false as const, message: readApiError(payload), organizationId: "", profile };
-    return {
-      ok: true as const,
-      organizationId: String(payload.organizationId ?? ""),
-      profile: normalizeApiProfile(payload.profile)
-    };
-  } catch {
-    return { ok: false as const, message: "Nao foi possivel salvar o cadastro profissional pelo servidor.", organizationId: "", profile };
-  }
+async function saveProfessionalProfileDirectly(
+  supabase: ReturnType<typeof createBrowserSupabaseClient>,
+  userId: string,
+  fallbackEmail: string,
+  profile: ProfessionalProfileData
+) {
+  const savedProfile = {
+    id: userId,
+    user_id: userId,
+    full_name: profile.name.trim() || "Profissional Nexopsi",
+    crp: profile.register.trim() || null,
+    email: profile.email.trim() || fallbackEmail || null,
+    phone: profile.phone.trim() || null,
+    specialty: profile.specialty.trim() || "Psicologia clinica",
+    bio: profile.bio.trim() || null,
+    avatar_url: profile.photoUrl?.trim() || null,
+    updated_at: new Date().toISOString()
+  };
+
+  const { data, error } = await supabase
+    .from("professional_profiles")
+    .upsert(savedProfile, { onConflict: "user_id" })
+    .select("full_name, crp, email, phone, specialty, bio, avatar_url")
+    .single();
+
+  if (error) return { ok: false as const, message: `Nao foi possivel salvar o cadastro profissional: ${error.message}`, profile };
+
+  await supabase.from("profiles").upsert(savedProfile, { onConflict: "user_id" });
+  return { ok: true as const, message: "", profile: normalizeApiProfile(data) };
 }
 
 function normalizeApiProfile(value: unknown): ProfessionalProfileData {
   if (!value || typeof value !== "object") return emptyProfessionalProfile();
-  const profile = value as Partial<ProfessionalProfileData>;
+  const profile = value as Partial<ProfessionalProfileData> & {
+    full_name?: unknown;
+    crp?: unknown;
+    avatar_url?: unknown;
+  };
   return {
-    name: typeof profile.name === "string" ? profile.name : "",
-    register: typeof profile.register === "string" ? profile.register : "",
+    name: typeof profile.name === "string" ? profile.name : typeof profile.full_name === "string" ? profile.full_name : "",
+    register: typeof profile.register === "string" ? profile.register : typeof profile.crp === "string" ? profile.crp : "",
     email: typeof profile.email === "string" ? profile.email : "",
     phone: typeof profile.phone === "string" ? profile.phone : "",
     specialty: typeof profile.specialty === "string" && profile.specialty ? profile.specialty : "Psicologia clinica",
     bio: typeof profile.bio === "string" ? profile.bio : "",
-    photoUrl: typeof profile.photoUrl === "string" ? profile.photoUrl : ""
+    photoUrl: typeof profile.photoUrl === "string" ? profile.photoUrl : typeof profile.avatar_url === "string" ? profile.avatar_url : ""
   };
 }
 
@@ -573,12 +583,6 @@ function emptyProfessionalProfile(): ProfessionalProfileData {
     bio: "",
     photoUrl: ""
   };
-}
-
-function readApiError(value: unknown) {
-  if (!value || typeof value !== "object") return "Erro inesperado do servidor.";
-  const error = (value as { error?: unknown }).error;
-  return typeof error === "string" && error.trim() ? error : "Erro inesperado do servidor.";
 }
 
 function redirectToLogin() {
@@ -633,18 +637,6 @@ type DatabasePatient = {
   last_session: string | null;
 };
 
-async function ensureWorkspace(supabase: ReturnType<typeof createBrowserSupabaseClient>, profileName: string) {
-  const { data, error } = await supabase.rpc("ensure_personal_workspace", {
-    profile_name: profileName
-  });
-
-  if (error || !data) {
-    throw new Error(error?.message ?? "Workspace nao encontrado.");
-  }
-
-  return String(data);
-}
-
 function mapDatabasePatient(patient: DatabasePatient, therapist: string): Patient {
   return {
     id: patient.id,
@@ -670,9 +662,9 @@ function mapDatabasePatient(patient: DatabasePatient, therapist: string): Patien
   };
 }
 
-function mapPatientToDatabase(patient: Patient, organizationId: string) {
+function mapPatientToDatabase(patient: Patient, currentUserId: string) {
   return {
-    organization_id: organizationId,
+    user_id: currentUserId,
     full_name: patient.name,
     cpf: patient.cpf || null,
     birth_date: patient.birthDate || null,

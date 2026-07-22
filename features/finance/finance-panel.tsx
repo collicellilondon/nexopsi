@@ -102,7 +102,7 @@ const kindLabel: Record<InvoiceKind, string> = {
   avulsa: "Avulsa"
 };
 
-export function FinancePanel({ workspaceId, patients = [], searchQuery = "", onNotify }: { workspaceId?: string | null; patients?: Patient[]; searchQuery?: string; onNotify: (message: string) => void }) {
+export function FinancePanel({ userId, patients = [], searchQuery = "", onNotify }: { userId?: string | null; patients?: Patient[]; searchQuery?: string; onNotify: (message: string) => void }) {
   const [activeTab, setActiveTab] = useState<FinanceTab>("Visao geral");
   const [invoices, setInvoices] = useState(initialInvoices);
   const [prices, setPrices] = useState(initialPrices);
@@ -119,14 +119,14 @@ export function FinancePanel({ workspaceId, patients = [], searchQuery = "", onN
   }, [searchQuery]);
 
   useEffect(() => {
-    if (!workspaceId) return;
+    if (!userId) return;
 
     async function loadFinanceData() {
       try {
         const supabase = createBrowserSupabaseClient();
         const [{ data: savedPrices, error: pricesError }, { data: savedInvoices, error: invoicesError }] = await Promise.all([
-          supabase.from("service_prices").select("id, name, duration, value, recurrence, active").eq("organization_id", workspaceId).order("created_at", { ascending: true }),
-          supabase.from("invoices").select("id, patient_id, patient_name, patient_cpf, patient_phone, patient_email, description, due_date, amount, status, method, kind, installments").eq("organization_id", workspaceId).order("created_at", { ascending: false })
+          supabase.from("service_prices").select("id, name, duration, value, recurrence, active").eq("user_id", userId).order("created_at", { ascending: true }),
+          supabase.from("invoices").select("id, patient_id, patient_name, patient_cpf, patient_phone, patient_email, description, due_date, amount, status, method, kind, installments").eq("user_id", userId).order("created_at", { ascending: false })
         ]);
 
         if (pricesError) onNotify(`Nao foi possivel carregar valores: ${pricesError.message}`);
@@ -140,7 +140,7 @@ export function FinancePanel({ workspaceId, patients = [], searchQuery = "", onN
     }
 
     loadFinanceData();
-  }, [workspaceId, onNotify]);
+  }, [userId, onNotify]);
 
   const filtered = useMemo(() => {
     return invoices.filter((invoice) => {
@@ -183,18 +183,18 @@ export function FinancePanel({ workspaceId, patients = [], searchQuery = "", onN
 
   async function markPaid(id: string) {
     setInvoices((current) => current.map((invoice) => (invoice.id === id ? { ...invoice, status: "paga" } : invoice)));
-    if (workspaceId) {
+    if (userId) {
       const supabase = createBrowserSupabaseClient();
-      await supabase.from("invoices").update({ status: "paga" }).eq("id", id).eq("organization_id", workspaceId);
+      await supabase.from("invoices").update({ status: "paga" }).eq("id", id).eq("user_id", userId);
     }
     onNotify("Fatura marcada como paga e recibo liberado.");
   }
 
   async function cancelInvoice(id: string) {
     setInvoices((current) => current.map((invoice) => (invoice.id === id ? { ...invoice, status: "cancelada" } : invoice)));
-    if (workspaceId) {
+    if (userId) {
       const supabase = createBrowserSupabaseClient();
-      await supabase.from("invoices").update({ status: "cancelada" }).eq("id", id).eq("organization_id", workspaceId);
+      await supabase.from("invoices").update({ status: "cancelada" }).eq("id", id).eq("user_id", userId);
     }
     onNotify("Fatura cancelada.");
   }
@@ -204,13 +204,13 @@ export function FinancePanel({ workspaceId, patients = [], searchQuery = "", onN
     setInvoices((current) => [nextInvoice, ...current]);
     setInvoiceModalOpen(false);
     setActiveTab("Faturas");
-    if (!workspaceId) {
-      onNotify("Fatura criada nesta tela. Aguarde o workspace carregar para salvar no Supabase.");
+    if (!userId) {
+      onNotify("Entre novamente para salvar a fatura no Supabase.");
       return;
     }
 
     const supabase = createBrowserSupabaseClient();
-    const { data, error } = await supabase.from("invoices").insert(mapInvoiceToDatabase(nextInvoice, workspaceId)).select("id, patient_id, patient_name, patient_cpf, patient_phone, patient_email, description, due_date, amount, status, method, kind, installments").single();
+    const { data, error } = await supabase.from("invoices").insert(mapInvoiceToDatabase(nextInvoice, userId)).select("id, patient_id, patient_name, patient_cpf, patient_phone, patient_email, description, due_date, amount, status, method, kind, installments").single();
     if (error) {
       onNotify(`Nao foi possivel salvar a fatura no Supabase: ${error.message}`);
       return;
@@ -223,14 +223,16 @@ export function FinancePanel({ workspaceId, patients = [], searchQuery = "", onN
     const nextPrice = { ...price, id: `preco-${Date.now()}`, active: true };
     setPrices((current) => [nextPrice, ...current]);
     setPriceModalOpen(false);
-    if (!workspaceId) {
-      onNotify(`Valor "${price.name}" cadastrado nesta tela. Aguarde o workspace carregar para salvar no Supabase.`);
+    if (!userId) {
+      onNotify("Entre novamente para salvar os valores no Supabase.");
       return;
     }
 
     const supabase = createBrowserSupabaseClient();
     const { data, error } = await supabase
-      .rpc("save_service_prices", { price_items: [mapPriceToDatabase(nextPrice, workspaceId)] });
+      .from("service_prices")
+      .upsert(mapPriceToDatabase(nextPrice, userId), { onConflict: "user_id,name" })
+      .select("id, name, duration, value, recurrence, active");
     if (error) {
       onNotify(`Nao foi possivel salvar o valor no Supabase: ${error.message}`);
       return;
@@ -241,14 +243,18 @@ export function FinancePanel({ workspaceId, patients = [], searchQuery = "", onN
   }
 
   async function saveAllPrices() {
-    if (!workspaceId) {
-      onNotify("Aguarde o workspace carregar para salvar os valores.");
+    if (!userId) {
+      onNotify("Entre novamente para salvar os valores.");
       return;
     }
 
     const supabase = createBrowserSupabaseClient();
-    const payload = prices.map((price) => mapPriceToDatabase(price, workspaceId));
-    const { data, error } = await supabase.rpc("save_service_prices", { price_items: payload });
+    const payload = prices.map((price) => mapPriceToDatabase(price, userId));
+    const { data, error } = await supabase
+      .from("service_prices")
+      .upsert(payload, { onConflict: "user_id,name" })
+      .select("id, name, duration, value, recurrence, active")
+      .order("created_at", { ascending: true });
     if (error) {
       onNotify(`Nao foi possivel atualizar os valores: ${error.message}`);
       return;
@@ -1146,9 +1152,9 @@ function mapDatabasePrice(price: DatabasePrice): ServicePrice {
   };
 }
 
-function mapPriceToDatabase(price: ServicePrice, organizationId: string) {
+function mapPriceToDatabase(price: ServicePrice, currentUserId: string) {
   const payload: Record<string, string | number | boolean> = {
-    organization_id: organizationId,
+    user_id: currentUserId,
     name: price.name,
     duration: price.duration,
     value: price.value,
@@ -1177,10 +1183,9 @@ function mapDatabaseInvoice(invoice: DatabaseInvoice): Invoice {
   };
 }
 
-function mapInvoiceToDatabase(invoice: Invoice, organizationId: string) {
-  return {
-    id: invoice.id,
-    organization_id: organizationId,
+function mapInvoiceToDatabase(invoice: Invoice, currentUserId: string) {
+  const payload: Record<string, string | number | null> = {
+    user_id: currentUserId,
     patient_id: invoice.patientId && isUuid(invoice.patientId) ? invoice.patientId : null,
     patient_name: invoice.patient,
     patient_cpf: invoice.patientCpf || null,
@@ -1194,6 +1199,8 @@ function mapInvoiceToDatabase(invoice: Invoice, organizationId: string) {
     kind: invoice.kind,
     installments: invoice.installments || null
   };
+  if (isUuid(invoice.id)) payload.id = invoice.id;
+  return payload;
 }
 
 function isUuid(value?: string) {

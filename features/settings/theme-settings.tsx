@@ -15,7 +15,7 @@ const themes = [
   { id: "minimal", name: "Minimal premium", primary: "#263238", secondary: "#607D72", bg: "#F8FAF9" }
 ];
 
-export function ThemeSettings({ workspaceId, onNotify }: { workspaceId?: string | null; onNotify: (message: string) => void }) {
+export function ThemeSettings({ onNotify }: { onNotify: (message: string) => void }) {
   const [active, setActive] = useState("nexopsi");
   const [saving, setSaving] = useState(false);
 
@@ -37,12 +37,6 @@ export function ThemeSettings({ workspaceId, onNotify }: { workspaceId?: string 
         return;
       }
 
-      if (!workspaceId) return;
-      const appTheme = await loadWorkspaceTheme(supabase, workspaceId);
-      if (!mounted) return;
-      if (appTheme.ok) {
-        applyThemeLocally(appTheme.themeId);
-      }
     }
 
     loadTheme();
@@ -50,7 +44,7 @@ export function ThemeSettings({ workspaceId, onNotify }: { workspaceId?: string 
     return () => {
       mounted = false;
     };
-  }, [workspaceId]);
+  }, []);
 
   function applyThemeLocally(id: string) {
     const theme = themes.find((item) => item.id === id) ?? themes[0];
@@ -76,12 +70,9 @@ export function ThemeSettings({ workspaceId, onNotify }: { workspaceId?: string 
     }
 
     const result = await saveUserTheme(supabase, userId, theme.id);
-    if (!result.ok && workspaceId) {
-      await saveWorkspaceTheme(supabase, workspaceId, theme.id);
-    }
     setSaving(false);
 
-    if (!result.ok && !workspaceId) {
+    if (!result.ok) {
       onNotify(`Tema aplicado, mas ainda falta rodar o SQL de user_settings: ${result.message}`);
       return;
     }
@@ -127,12 +118,6 @@ async function loadUserTheme(supabase: ReturnType<typeof createBrowserSupabaseCl
   return { ok: true, themeId: readThemeId(data), message: "" };
 }
 
-async function loadWorkspaceTheme(supabase: ReturnType<typeof createBrowserSupabaseClient>, workspaceId: string) {
-  const { data, error } = await supabase.from("app_settings").select("value").eq("organization_id", workspaceId).eq("key", "theme").maybeSingle();
-  if (error) return { ok: false, themeId: "nexopsi", message: error.message };
-  return { ok: true, themeId: readThemeId(data?.value), message: "" };
-}
-
 async function saveUserTheme(supabase: ReturnType<typeof createBrowserSupabaseClient>, userId: string, themeId: string) {
   const payload = {
     user_id: userId,
@@ -150,15 +135,4 @@ async function saveUserTheme(supabase: ReturnType<typeof createBrowserSupabaseCl
     : await supabase.from("user_settings").insert(payload);
 
   return result.error ? { ok: false, message: result.error.message } : { ok: true, message: "" };
-}
-
-async function saveWorkspaceTheme(supabase: ReturnType<typeof createBrowserSupabaseClient>, workspaceId: string, themeId: string) {
-  return supabase.from("app_settings").upsert(
-    {
-      organization_id: workspaceId,
-      key: "theme",
-      value: { id: themeId }
-    },
-    { onConflict: "organization_id,key" }
-  );
 }

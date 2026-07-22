@@ -34,7 +34,7 @@ const statusColors: Record<AppointmentStatus, { label: string; color: string }> 
 
 type ClinicalCalendarProps = {
   createdCount: number;
-  workspaceId?: string | null;
+  userId?: string | null;
   patients?: Patient[];
   onNotify: (message: string) => void;
 };
@@ -44,7 +44,7 @@ type ScheduleDraft = {
   end: string;
 };
 
-export function ClinicalCalendar({ createdCount, workspaceId, patients = [], onNotify }: ClinicalCalendarProps) {
+export function ClinicalCalendar({ createdCount, userId, patients = [], onNotify }: ClinicalCalendarProps) {
   const [items, setItems] = useState<Appointment[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [modalId, setModalId] = useState<string | null>(null);
@@ -64,7 +64,7 @@ export function ClinicalCalendar({ createdCount, workspaceId, patients = [], onN
   }, [createdCount]);
 
   useEffect(() => {
-    if (!workspaceId) return;
+    if (!userId) return;
     let mounted = true;
 
     async function loadAppointments() {
@@ -72,7 +72,7 @@ export function ClinicalCalendar({ createdCount, workspaceId, patients = [], onN
       const { data, error } = await supabase
         .from("appointments")
         .select("id, patient_id, starts_at, ends_at, status, mode, type, paid, room, location")
-        .eq("organization_id", workspaceId)
+        .eq("user_id", userId)
         .order("starts_at", { ascending: true });
 
       if (!mounted) return;
@@ -93,7 +93,7 @@ export function ClinicalCalendar({ createdCount, workspaceId, patients = [], onN
     };
   // onNotify is only used to report load failures for this fetch cycle.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceId, patientNames]);
+  }, [userId, patientNames]);
 
   const events = useMemo(
     () =>
@@ -127,13 +127,13 @@ export function ClinicalCalendar({ createdCount, workspaceId, patients = [], onN
           : appointment
       )
     );
-    if (workspaceId && arg.event.start && arg.event.end) {
+    if (userId && arg.event.start && arg.event.end) {
       const supabase = createBrowserSupabaseClient();
       const { error } = await supabase
         .from("appointments")
         .update({ starts_at: arg.event.start.toISOString(), ends_at: arg.event.end.toISOString() })
         .eq("id", arg.event.id)
-        .eq("organization_id", workspaceId);
+        .eq("user_id", userId);
       if (error) {
         onNotify(`Nao foi possivel salvar o reagendamento: ${error.message}`);
         return;
@@ -172,12 +172,11 @@ export function ClinicalCalendar({ createdCount, workspaceId, patients = [], onN
     setSelectedId(appointment.id);
     setModalId(appointment.id);
     setScheduler(null);
-    if (workspaceId) {
+    if (userId) {
       const supabase = createBrowserSupabaseClient();
-      const { data: userData } = await supabase.auth.getUser();
       const { data, error } = await supabase
         .from("appointments")
-        .insert(mapAppointmentToDatabase(appointment, workspaceId, userData.user?.id ?? null))
+        .insert(mapAppointmentToDatabase(appointment, userId))
         .select("id, patient_id, starts_at, ends_at, status, mode, type, paid, room, location")
         .single();
 
@@ -196,13 +195,13 @@ export function ClinicalCalendar({ createdCount, workspaceId, patients = [], onN
 
   async function updateAppointment(appointmentId: string, patch: Partial<Appointment>, message: string) {
     setItems((current) => current.map((appointment) => (appointment.id === appointmentId ? { ...appointment, ...patch } : appointment)));
-    if (workspaceId) {
+    if (userId) {
       const supabase = createBrowserSupabaseClient();
       const { error } = await supabase
         .from("appointments")
         .update(mapAppointmentPatchToDatabase(patch))
         .eq("id", appointmentId)
-        .eq("organization_id", workspaceId);
+        .eq("user_id", userId);
       if (error) {
         onNotify(`Nao foi possivel salvar a sessao: ${error.message}`);
         return;
@@ -459,11 +458,10 @@ function mapDatabaseAppointment(row: DatabaseAppointment, patientNames: Map<stri
   };
 }
 
-function mapAppointmentToDatabase(appointment: Appointment, organizationId: string, professionalId: string | null) {
+function mapAppointmentToDatabase(appointment: Appointment, currentUserId: string) {
   return {
-    organization_id: organizationId,
+    user_id: currentUserId,
     patient_id: appointment.patientId && isUuid(appointment.patientId) ? appointment.patientId : null,
-    professional_id: professionalId,
     starts_at: appointment.start,
     ends_at: appointment.end,
     status: mapAppointmentStatus(appointment.status),
