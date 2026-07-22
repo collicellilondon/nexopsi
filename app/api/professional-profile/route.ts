@@ -80,21 +80,29 @@ export async function POST(request: Request) {
 async function createRequestContext(request: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
 
   if (!supabaseUrl || !anonKey) {
     return { ok: false as const, response: errorResponse("Supabase nao configurado.", 500) };
   }
 
+  if (!serviceRoleKey) {
+    return { ok: false as const, response: errorResponse("Configure SUPABASE_SERVICE_ROLE_KEY na Vercel para salvar o cadastro profissional.", 500) };
+  }
+
   const token = readBearerToken(request);
   if (!token) return { ok: false as const, response: errorResponse("Sessao ausente. Entre novamente.", 401) };
 
-  const supabase = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
+  const authClient = createClient(supabaseUrl, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+
+  const { data, error } = await authClient.auth.getUser(token);
+  if (error || !data.user) return { ok: false as const, response: errorResponse("Sessao invalida. Entre novamente.", 401) };
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false }
   }) as any;
-
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data.user) return { ok: false as const, response: errorResponse("Sessao invalida. Entre novamente.", 401) };
 
   return { ok: true as const, supabase, user: data.user };
 }
