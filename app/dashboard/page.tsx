@@ -1,5 +1,5 @@
-import { InteractiveHome } from "@/features/home/interactive-home";
+import { FreshNexopsiApp } from "@/features/fresh/fresh-nexopsi-app";
 
 export default function DashboardPage() {
-  return <InteractiveHome />;
+  return <FreshNexopsiApp />;
 }
