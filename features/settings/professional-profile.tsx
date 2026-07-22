@@ -26,6 +26,8 @@ type ProfessionalProfileProps = {
 
 export function ProfessionalProfile({ initialProfile, onNotify, onSave, onUploadPhoto }: ProfessionalProfileProps) {
   const [profile, setProfile] = useState<ProfessionalProfileData>(initialProfile);
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState("");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -33,7 +35,15 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave, onUpload
 
   useEffect(() => {
     setProfile(initialProfile);
+    setSelectedPhoto(null);
+    setPreviewUrl("");
   }, [initialProfile]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   function update(field: keyof ProfessionalProfileData, value: string) {
     setProfile((current) => ({ ...current, [field]: value }));
@@ -42,12 +52,38 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave, onUpload
 
   async function saveProfile() {
     setSaving(true);
-    const success = await onSave(profile);
+    let nextProfile = profile;
+
+    if (selectedPhoto) {
+      if (!onUploadPhoto) {
+        onNotify("Upload de foto indisponivel nesta tela.");
+        setSaving(false);
+        return;
+      }
+
+      setPhotoUploading(true);
+      const photoUrl = await onUploadPhoto(selectedPhoto);
+      setPhotoUploading(false);
+
+      if (!photoUrl) {
+        setSaving(false);
+        return;
+      }
+
+      nextProfile = { ...profile, photoUrl };
+      setProfile(nextProfile);
+    }
+
+    const success = await onSave(nextProfile);
     setSaving(false);
     setSaved(success);
+    if (success) {
+      setSelectedPhoto(null);
+      setPreviewUrl("");
+    }
   }
 
-  async function changePhoto(file?: File) {
+  function changePhoto(file?: File) {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       onNotify("Selecione um arquivo de imagem para a foto profissional.");
@@ -57,19 +93,11 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave, onUpload
       onNotify("A foto precisa ter ate 4 MB para ser salva no Supabase.");
       return;
     }
-    if (!onUploadPhoto) {
-      onNotify("Upload de foto indisponivel nesta tela.");
-      return;
-    }
-
-    setPhotoUploading(true);
-    const photoUrl = await onUploadPhoto(file);
-    setPhotoUploading(false);
-
-    if (!photoUrl) return;
-    setProfile((current) => ({ ...current, photoUrl }));
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setSelectedPhoto(file);
+    setPreviewUrl(URL.createObjectURL(file));
     setSaved(false);
-    onNotify("Foto enviada ao Supabase. Clique em Salvar cadastro para atualizar documentos e cabecalho.");
+    onNotify("Foto carregada para pre-visualizacao. Clique em Salvar cadastro para enviar ao Supabase.");
   }
 
   return (
@@ -80,19 +108,35 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave, onUpload
       </CardHeader>
       <CardContent className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <div className="rounded-lg border border-border bg-background p-5 text-center">
-          <div className="mx-auto flex h-32 w-32 items-center justify-center overflow-hidden rounded-full bg-primary-soft text-4xl font-black text-primary">
-            {profile.photoUrl ? (
+          <div
+            className="mx-auto flex h-32 w-32 items-center justify-center overflow-hidden rounded-full bg-primary-soft bg-cover bg-center text-4xl font-black text-primary"
+            style={previewUrl ? { backgroundImage: `url(${previewUrl})` } : undefined}
+          >
+            {!previewUrl && profile.photoUrl ? (
               <Image src={profile.photoUrl} alt={`Foto de ${profile.name}`} width={128} height={128} unoptimized className="h-full w-full object-cover" />
+            ) : previewUrl ? (
+              <span className="sr-only">Pre-visualizacao da foto profissional</span>
             ) : (
               getInitials(profile.name)
             )}
           </div>
-          <input ref={fileInputRef} type="file" accept="image/*" className="sr-only" onChange={(event) => changePhoto(event.target.files?.[0])} />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={(event) => {
+              changePhoto(event.target.files?.[0]);
+              event.currentTarget.value = "";
+            }}
+          />
           <Button type="button" variant="outline" className="mt-4 w-full" disabled={photoUploading} onClick={() => fileInputRef.current?.click()}>
             <Camera className="h-4 w-4" />
-            {photoUploading ? "Enviando..." : "Alterar foto"}
+            {photoUploading ? "Enviando..." : selectedPhoto ? "Trocar foto" : "Alterar foto"}
           </Button>
-          <p className="mt-3 text-sm text-ink-muted">Foto profissional de {profile.name || "psicologo"} para cabecalhos e documentos.</p>
+          <p className="mt-3 text-sm text-ink-muted">
+            {selectedPhoto ? "Foto pronta para salvar no Supabase." : `Foto profissional de ${profile.name || "psicologo"} para cabecalhos e documentos.`}
+          </p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">

@@ -513,6 +513,11 @@ export function InteractiveHome() {
       });
 
       if (error) {
+        const message = error.message.toLowerCase();
+        if (message.includes("bucket") || message.includes("not found") || message.includes("row-level security") || message.includes("policy")) {
+          notify(`Nao foi possivel enviar a foto. Confirme no Supabase Storage se o bucket professional-avatars existe e se as policies do SQL foram aplicadas. Detalhe: ${error.message}`);
+          return null;
+        }
         notify(`Nao foi possivel enviar a foto ao Supabase Storage: ${error.message}`);
         return null;
       }
