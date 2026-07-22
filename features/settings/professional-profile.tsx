@@ -66,12 +66,11 @@ export function ProfessionalProfile({ initialProfile, onNotify, onSave, onUpload
       setPhotoUploading(false);
 
       if (!photoUrl) {
-        setSaving(false);
-        return;
+        onNotify("Nao consegui enviar a foto agora, mas vou salvar os dados do cadastro profissional sem alterar a foto.");
+      } else {
+        nextProfile = { ...profile, photoUrl };
+        setProfile(nextProfile);
       }
-
-      nextProfile = { ...profile, photoUrl };
-      setProfile(nextProfile);
     }
 
     const success = await onSave(nextProfile);

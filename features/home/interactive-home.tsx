@@ -57,9 +57,15 @@ export function InteractiveHome() {
         }
 
         const supabase = createBrowserSupabaseClient();
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session?.user?.id) {
+          clearLocalSessionCookie();
+          redirectToLogin();
+          return;
+        }
+
         const { data: userData } = await supabase.auth.getUser();
-        const userId = userData.user?.id;
-        if (!userId) return;
+        const userId = userData.user?.id ?? sessionData.session.user.id;
         const metadata = userData.user?.user_metadata ?? {};
 
         const { data: ensuredWorkspaceId, error: workspaceError } = await supabase.rpc("ensure_personal_workspace", {
@@ -174,10 +180,13 @@ export function InteractiveHome() {
 
     try {
       const supabase = createBrowserSupabaseClient();
+      const { data: sessionData } = await supabase.auth.getSession();
       const { data: userData } = await supabase.auth.getUser();
-      const userId = userData.user?.id;
+      const userId = userData.user?.id ?? sessionData.session?.user.id;
       if (!userId) {
-        notify("Cadastro salvo nesta tela, mas entre novamente para gravar no Supabase.");
+        clearLocalSessionCookie();
+        notify("Sua sessao expirou. Entre novamente para salvar o cadastro profissional no Supabase.");
+        redirectToLogin();
         return false;
       }
 
@@ -545,6 +554,13 @@ export function InteractiveHome() {
 function clearLocalSessionCookie() {
   if (typeof document === "undefined") return;
   document.cookie = "nexopsi_session=; path=/; max-age=0; samesite=lax";
+}
+
+function redirectToLogin() {
+  if (typeof window === "undefined") return;
+  const target = new URL("/login", window.location.origin);
+  target.searchParams.set("returnTo", "/dashboard");
+  window.location.assign(target.toString());
 }
 
 function includesAny(value: string, terms: string[]) {
