@@ -415,6 +415,10 @@ as $$
   );
 $$;
 
+revoke execute on function is_org_member(uuid) from public;
+revoke execute on function is_org_member(uuid) from anon;
+grant execute on function is_org_member(uuid) to authenticated;
+
 alter table organizations enable row level security;
 alter table profiles enable row level security;
 alter table organization_members enable row level security;
@@ -857,6 +861,8 @@ begin
 end;
 $$;
 
+revoke execute on function ensure_personal_workspace(text) from public;
+revoke execute on function ensure_personal_workspace(text) from anon;
 grant execute on function ensure_personal_workspace(text) to authenticated;
 
 create or replace function save_professional_profile(
@@ -982,6 +988,8 @@ begin
 end;
 $$;
 
+revoke execute on function save_professional_profile(text, text, text, text, text, text, text) from public;
+revoke execute on function save_professional_profile(text, text, text, text, text, text, text) from anon;
 grant execute on function save_professional_profile(text, text, text, text, text, text, text) to authenticated;
 
 create or replace function save_service_prices(price_items jsonb)
@@ -1080,4 +1088,6 @@ begin
 end;
 $$;
 
+revoke execute on function save_service_prices(jsonb) from public;
+revoke execute on function save_service_prices(jsonb) from anon;
 grant execute on function save_service_prices(jsonb) to authenticated;

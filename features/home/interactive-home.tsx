@@ -33,7 +33,7 @@ export function InteractiveHome() {
     bio: "",
     photoUrl: ""
   });
-  const [message, setMessage] = useState("Ambiente zerado: complete o cadastro profissional e comece criando pacientes, sessoes e documentos.");
+  const [message, setMessage] = useState("Painel pronto. Use a busca ou o menu lateral para acessar pacientes, agenda, financeiro e documentos.");
   const allPatients = useMemo(() => dedupePatients(patients), [patients]);
   const patientSuggestions = useMemo<SearchSuggestion[]>(
     () =>
@@ -72,34 +72,22 @@ export function InteractiveHome() {
         if (!active) return;
         setWorkspaceId(String(ensuredWorkspaceId));
 
-        const { data, error } = await supabase
-          .from("professional_profiles")
-          .select("full_name, avatar_url, crp, phone, email, specialty, bio")
-          .eq("organization_id", ensuredWorkspaceId)
-          .eq("profile_id", userId)
-          .maybeSingle();
-
-        const { data: baseProfile } = await supabase
-          .from("profiles")
-          .select("full_name, avatar_url, crp, phone, email, specialty, bio")
-          .eq("id", userId)
-          .maybeSingle();
-
-        if (error || !active) return;
-        const profileData = data ?? baseProfile;
+        const profileData = await loadProfessionalProfile(supabase, String(ensuredWorkspaceId), userId);
+        if (!active) return;
         const resolvedProfile = {
-          name: profileData?.full_name ?? String(metadata.full_name ?? ""),
-          register: profileData?.crp ?? String(metadata.crp ?? ""),
+          name: profileData?.professional_name ?? profileData?.full_name ?? String(metadata.full_name ?? ""),
+          register: profileData?.professional_registration ?? profileData?.crp ?? String(metadata.crp ?? ""),
           email: profileData?.email ?? String(metadata.email ?? userData.user?.email ?? ""),
           phone: profileData?.phone ?? String(metadata.phone ?? ""),
           specialty: profileData?.specialty ?? String(metadata.specialty ?? "Psicologia clinica"),
-          bio: profileData?.bio ?? String(metadata.bio ?? ""),
-          photoUrl: profileData?.avatar_url ?? String(metadata.avatar_url ?? "")
+          bio: profileData?.professional_bio ?? profileData?.bio ?? String(metadata.bio ?? ""),
+          photoUrl: profileData?.profile_photo_url ?? profileData?.avatar_url ?? String(metadata.avatar_url ?? "")
         };
 
         setProfessionalProfile(resolvedProfile);
+        notify(resolvedProfile.name ? `Cadastro profissional carregado para ${resolvedProfile.name}.` : "Cadastre seus dados profissionais para personalizar o portal.");
 
-        if (!data) {
+        if (!profileData) {
           await supabase.rpc("save_professional_profile", {
             profile_name: resolvedProfile.name || "Profissional Nexopsi",
             profile_register: resolvedProfile.register || null,
@@ -122,7 +110,7 @@ export function InteractiveHome() {
           return;
         }
 
-        const nextPatients = (savedPatients ?? []).map((patient) => mapDatabasePatient(patient, profileData?.full_name ?? String(metadata.full_name ?? "")));
+        const nextPatients = (savedPatients ?? []).map((patient) => mapDatabasePatient(patient, resolvedProfile.name));
         if (active) {
           setPatients(nextPatients);
           storePatientsLocally(nextPatients);
@@ -631,6 +619,36 @@ async function ensureWorkspace(supabase: ReturnType<typeof createBrowserSupabase
   return String(data);
 }
 
+async function loadProfessionalProfile(supabase: ReturnType<typeof createBrowserSupabaseClient>, organizationId: string, userId: string) {
+  const modern = await supabase
+    .from("professional_profiles")
+    .select("full_name, avatar_url, crp, phone, email, specialty, bio, professional_name, professional_registration, professional_bio, profile_photo_url")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!modern.error && modern.data) return modern.data as DatabaseProfessionalProfile;
+
+  const legacy = await supabase
+    .from("professional_profiles")
+    .select("full_name, avatar_url, crp, phone, email, specialty, bio")
+    .eq("organization_id", organizationId)
+    .eq("profile_id", userId)
+    .maybeSingle();
+
+  if (!legacy.error && legacy.data) return legacy.data as DatabaseProfessionalProfile;
+
+  const base = await supabase
+    .from("profiles")
+    .select("full_name, avatar_url, crp, phone, email, specialty, bio")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (!base.error && base.data) return base.data as DatabaseProfessionalProfile;
+  return null;
+}
+
 function mapDatabasePatient(patient: DatabasePatient, therapist: string): Patient {
   return {
     id: patient.id,
@@ -745,14 +763,23 @@ async function saveProfessionalProfileDirectly(supabase: ReturnType<typeof creat
 
   if (profileError) return { ok: false, message: profileError.message, profile: null };
 
-  const { data: existingProfile, error: findError } = await supabase
+  const modernFind = await supabase
+    .from("professional_profiles")
+    .select("id")
+    .eq("user_id", payload.profile_id)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const legacyFind = modernFind.error || !modernFind.data ? await supabase
     .from("professional_profiles")
     .select("id")
     .eq("organization_id", payload.organization_id)
     .eq("profile_id", payload.profile_id)
-    .maybeSingle();
+    .maybeSingle() : { data: null, error: null };
 
-  if (findError) return { ok: false, message: findError.message, profile: null };
+  if (modernFind.error && legacyFind.error) return { ok: false, message: legacyFind.error.message || modernFind.error.message, profile: null };
+  const existingProfile = modernFind.data ?? legacyFind.data;
 
   const modernQuery = existingProfile?.id
     ? supabase
