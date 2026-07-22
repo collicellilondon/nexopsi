@@ -4,6 +4,8 @@
 
 create extension if not exists "pgcrypto";
 
+grant usage on schema public to anon, authenticated;
+
 create table if not exists organizations (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -1091,3 +1093,12 @@ $$;
 revoke execute on function save_service_prices(jsonb) from public;
 revoke execute on function save_service_prices(jsonb) from anon;
 grant execute on function save_service_prices(jsonb) to authenticated;
+
+-- Permissoes finais das RPCs usadas pelo app.
+-- `anon` recebe permissao de chamada para evitar "permission denied" antes da funcao rodar,
+-- mas as funcoes continuam bloqueando usuarios sem auth.uid() dentro do proprio corpo.
+grant usage on schema public to anon, authenticated;
+grant execute on function is_org_member(uuid) to anon, authenticated;
+grant execute on function ensure_personal_workspace(text) to anon, authenticated;
+grant execute on function save_professional_profile(text, text, text, text, text, text, text) to anon, authenticated;
+grant execute on function save_service_prices(jsonb) to anon, authenticated;
