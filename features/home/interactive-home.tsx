@@ -64,51 +64,23 @@ export function InteractiveHome() {
           return;
         }
 
-        const { data: userData } = await supabase.auth.getUser();
-        const userId = userData.user?.id ?? sessionData.session.user.id;
-        const metadata = userData.user?.user_metadata ?? {};
-
-        const { data: ensuredWorkspaceId, error: workspaceError } = await supabase.rpc("ensure_personal_workspace", {
-          profile_name: String(metadata.full_name ?? userData.user?.email ?? "Profissional Nexopsi")
-        });
-        if (workspaceError || !ensuredWorkspaceId) {
-          notify(`Nao foi possivel preparar o banco de dados: ${workspaceError?.message ?? "workspace nao encontrado"}.`);
+        const profileResult = await fetchProfessionalProfile(sessionData.session.access_token);
+        if (!profileResult.ok) {
+          notify(profileResult.message);
           return;
         }
         if (!active) return;
-        setWorkspaceId(String(ensuredWorkspaceId));
+        setWorkspaceId(profileResult.organizationId);
 
-        const profileData = await loadProfessionalProfile(supabase, String(ensuredWorkspaceId), userId);
-        if (!active) return;
-        const resolvedProfile = {
-          name: profileData?.professional_name ?? profileData?.full_name ?? String(metadata.full_name ?? ""),
-          register: profileData?.professional_registration ?? profileData?.crp ?? String(metadata.crp ?? ""),
-          email: profileData?.email ?? String(metadata.email ?? userData.user?.email ?? ""),
-          phone: profileData?.phone ?? String(metadata.phone ?? ""),
-          specialty: profileData?.specialty ?? String(metadata.specialty ?? "Psicologia clinica"),
-          bio: profileData?.professional_bio ?? profileData?.bio ?? String(metadata.bio ?? ""),
-          photoUrl: profileData?.profile_photo_url ?? profileData?.avatar_url ?? String(metadata.avatar_url ?? "")
-        };
+        const resolvedProfile = profileResult.profile;
 
         setProfessionalProfile(resolvedProfile);
         notify(resolvedProfile.name ? `Cadastro profissional carregado para ${resolvedProfile.name}.` : "Cadastre seus dados profissionais para personalizar o portal.");
 
-        if (!profileData) {
-          await supabase.rpc("save_professional_profile", {
-            profile_name: resolvedProfile.name || "Profissional Nexopsi",
-            profile_register: resolvedProfile.register || null,
-            profile_email: resolvedProfile.email || userData.user?.email || null,
-            profile_phone: resolvedProfile.phone || null,
-            profile_specialty: resolvedProfile.specialty || null,
-            profile_bio: resolvedProfile.bio || null,
-            profile_photo_url: resolvedProfile.photoUrl || null
-          });
-        }
-
         const { data: savedPatients, error: patientsError } = await supabase
           .from("patients")
           .select("id, full_name, cpf, birth_date, status, tags, notes, email, phone, address, emergency_contact, guardian, occupation, referral_source, main_complaint, pending_balance, next_session, last_session")
-          .eq("organization_id", ensuredWorkspaceId)
+          .eq("organization_id", profileResult.organizationId)
           .order("created_at", { ascending: false });
 
         if (patientsError) {
@@ -181,66 +153,41 @@ export function InteractiveHome() {
     try {
       const supabase = createBrowserSupabaseClient();
       const { data: sessionData } = await supabase.auth.getSession();
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData.user?.id ?? sessionData.session?.user.id;
-      if (!userId) {
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) {
         clearLocalSessionCookie();
         notify("Sua sessao expirou. Entre novamente para salvar o cadastro profissional no Supabase.");
         redirectToLogin();
         return false;
       }
 
-      const organizationId = workspaceId ?? (await ensureWorkspace(supabase, profile.name || "Profissional Nexopsi"));
-      setWorkspaceId(organizationId);
-
-      const profilePayload = mapProfessionalProfileToDatabase(profile, organizationId, userId, userData.user?.email ?? "");
-      const { data: rpcProfile, error: rpcError } = await supabase
-        .rpc("save_professional_profile", {
-          profile_name: profile.name || "Profissional Nexopsi",
-          profile_register: profile.register || null,
-          profile_email: profile.email || userData.user?.email || null,
-          profile_phone: profile.phone || null,
-          profile_specialty: profile.specialty || null,
-          profile_bio: profile.bio || null,
-          profile_photo_url: profile.photoUrl || null
-        })
-        .single();
-
-      if (rpcError) {
-        const fallback = await saveProfessionalProfileDirectly(supabase, profilePayload);
-        if (!fallback.ok || !fallback.profile) {
-          notify(`Nao foi possivel salvar o cadastro profissional no Supabase: ${fallback.message || rpcError.message}`);
-          return false;
-        }
-
-        setProfessionalProfile(mapDatabaseProfessionalProfile(fallback.profile, profile));
-        notify(`Cadastro profissional salvo no Supabase para ${profile.name || "profissional"}.`);
-        return true;
+      const saved = await postProfessionalProfile(accessToken, profile);
+      if (!saved.ok) {
+        notify(saved.message);
+        return false;
       }
 
-      if (rpcProfile) {
-        const profileRow = rpcProfile as DatabaseProfessionalProfile;
-        setProfessionalProfile(mapDatabaseProfessionalProfile(profileRow, profile));
-      }
-
+      setWorkspaceId(saved.organizationId);
+      setProfessionalProfile(saved.profile);
+      const { data: userData } = await supabase.auth.getUser();
       const currentMetadata = userData.user?.user_metadata ?? {};
       const metadataResult = await supabase.auth.updateUser({
         data: {
           ...currentMetadata,
-          full_name: profile.name || "Profissional Nexopsi",
-          avatar_url: profile.photoUrl || "",
-          crp: profile.register || "",
-          phone: profile.phone || "",
-          email: profile.email || userData.user?.email || "",
-          specialty: profile.specialty || "",
-          bio: profile.bio || ""
+          full_name: saved.profile.name || "Profissional Nexopsi",
+          avatar_url: saved.profile.photoUrl || "",
+          crp: saved.profile.register || "",
+          phone: saved.profile.phone || "",
+          email: saved.profile.email || userData.user?.email || "",
+          specialty: saved.profile.specialty || "",
+          bio: saved.profile.bio || ""
         }
       });
 
       if (metadataResult.error) {
         notify(`Cadastro salvo no Supabase, mas os metadados do login nao foram atualizados: ${metadataResult.error.message}`);
       } else {
-        notify(`Cadastro profissional salvo no Supabase para ${profile.name || "profissional"}.`);
+        notify(`Cadastro profissional salvo no Supabase para ${saved.profile.name || "profissional"}.`);
       }
 
       return true;
@@ -556,6 +503,77 @@ function clearLocalSessionCookie() {
   document.cookie = "nexopsi_session=; path=/; max-age=0; samesite=lax";
 }
 
+async function fetchProfessionalProfile(accessToken: string) {
+  try {
+    const response = await fetch("/api/professional-profile", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const payload = await response.json();
+    if (!response.ok) return { ok: false as const, message: readApiError(payload), organizationId: "", profile: emptyProfessionalProfile() };
+    return {
+      ok: true as const,
+      organizationId: String(payload.organizationId ?? ""),
+      profile: normalizeApiProfile(payload.profile)
+    };
+  } catch {
+    return { ok: false as const, message: "Nao foi possivel carregar o cadastro profissional pelo servidor.", organizationId: "", profile: emptyProfessionalProfile() };
+  }
+}
+
+async function postProfessionalProfile(accessToken: string, profile: ProfessionalProfileData) {
+  try {
+    const response = await fetch("/api/professional-profile", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(profile)
+    });
+    const payload = await response.json();
+    if (!response.ok) return { ok: false as const, message: readApiError(payload), organizationId: "", profile };
+    return {
+      ok: true as const,
+      organizationId: String(payload.organizationId ?? ""),
+      profile: normalizeApiProfile(payload.profile)
+    };
+  } catch {
+    return { ok: false as const, message: "Nao foi possivel salvar o cadastro profissional pelo servidor.", organizationId: "", profile };
+  }
+}
+
+function normalizeApiProfile(value: unknown): ProfessionalProfileData {
+  if (!value || typeof value !== "object") return emptyProfessionalProfile();
+  const profile = value as Partial<ProfessionalProfileData>;
+  return {
+    name: typeof profile.name === "string" ? profile.name : "",
+    register: typeof profile.register === "string" ? profile.register : "",
+    email: typeof profile.email === "string" ? profile.email : "",
+    phone: typeof profile.phone === "string" ? profile.phone : "",
+    specialty: typeof profile.specialty === "string" && profile.specialty ? profile.specialty : "Psicologia clinica",
+    bio: typeof profile.bio === "string" ? profile.bio : "",
+    photoUrl: typeof profile.photoUrl === "string" ? profile.photoUrl : ""
+  };
+}
+
+function emptyProfessionalProfile(): ProfessionalProfileData {
+  return {
+    name: "",
+    register: "",
+    email: "",
+    phone: "",
+    specialty: "Psicologia clinica",
+    bio: "",
+    photoUrl: ""
+  };
+}
+
+function readApiError(value: unknown) {
+  if (!value || typeof value !== "object") return "Erro inesperado do servidor.";
+  const error = (value as { error?: unknown }).error;
+  return typeof error === "string" && error.trim() ? error : "Erro inesperado do servidor.";
+}
+
 function redirectToLogin() {
   if (typeof window === "undefined") return;
   const target = new URL("/login", window.location.origin);
@@ -608,42 +626,6 @@ type DatabasePatient = {
   last_session: string | null;
 };
 
-type DatabaseProfessionalProfile = {
-  id?: string | null;
-  full_name: string | null;
-  avatar_url: string | null;
-  crp: string | null;
-  phone: string | null;
-  email: string | null;
-  specialty: string | null;
-  bio: string | null;
-  professional_name?: string | null;
-  professional_registration?: string | null;
-  professional_bio?: string | null;
-  profile_photo_url?: string | null;
-};
-
-type ProfessionalProfilePayload = {
-  organization_id: string;
-  profile_id: string;
-  user_id: string;
-  clinic_id: string;
-  full_name: string;
-  avatar_url: string | null;
-  crp: string | null;
-  phone: string | null;
-  email: string | null;
-  specialty: string | null;
-  bio: string | null;
-  professional_name: string;
-  professional_registration: string | null;
-  professional_bio: string | null;
-  document_signature: string | null;
-  profile_photo_url: string | null;
-  currency: string;
-  timezone: string;
-};
-
 async function ensureWorkspace(supabase: ReturnType<typeof createBrowserSupabaseClient>, profileName: string) {
   const { data, error } = await supabase.rpc("ensure_personal_workspace", {
     profile_name: profileName
@@ -654,36 +636,6 @@ async function ensureWorkspace(supabase: ReturnType<typeof createBrowserSupabase
   }
 
   return String(data);
-}
-
-async function loadProfessionalProfile(supabase: ReturnType<typeof createBrowserSupabaseClient>, organizationId: string, userId: string) {
-  const modern = await supabase
-    .from("professional_profiles")
-    .select("full_name, avatar_url, crp, phone, email, specialty, bio, professional_name, professional_registration, professional_bio, profile_photo_url")
-    .eq("user_id", userId)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!modern.error && modern.data) return modern.data as DatabaseProfessionalProfile;
-
-  const legacy = await supabase
-    .from("professional_profiles")
-    .select("full_name, avatar_url, crp, phone, email, specialty, bio")
-    .eq("organization_id", organizationId)
-    .eq("profile_id", userId)
-    .maybeSingle();
-
-  if (!legacy.error && legacy.data) return legacy.data as DatabaseProfessionalProfile;
-
-  const base = await supabase
-    .from("profiles")
-    .select("full_name, avatar_url, crp, phone, email, specialty, bio")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (!base.error && base.data) return base.data as DatabaseProfessionalProfile;
-  return null;
 }
 
 function mapDatabasePatient(patient: DatabasePatient, therapist: string): Patient {
@@ -732,125 +684,6 @@ function mapPatientToDatabase(patient: Patient, organizationId: string) {
     next_session: patient.nextSession || "A agendar",
     last_session: patient.lastSession || "Sem historico"
   };
-}
-
-function mapProfessionalProfileToDatabase(profile: ProfessionalProfileData, organizationId: string, userId: string, fallbackEmail: string): ProfessionalProfilePayload {
-  const fullName = profile.name || "Profissional Nexopsi";
-  const register = profile.register || null;
-  return {
-    organization_id: organizationId,
-    profile_id: userId,
-    user_id: userId,
-    clinic_id: organizationId,
-    full_name: fullName,
-    avatar_url: profile.photoUrl || null,
-    crp: register,
-    phone: profile.phone || null,
-    email: profile.email || fallbackEmail || null,
-    specialty: profile.specialty || null,
-    bio: profile.bio || null,
-    professional_name: fullName,
-    professional_registration: register,
-    professional_bio: profile.bio || null,
-    document_signature: register ? `${fullName} - ${register}` : fullName,
-    profile_photo_url: profile.photoUrl || null,
-    currency: "BRL",
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo"
-  };
-}
-
-function mapDatabaseProfessionalProfile(profile: DatabaseProfessionalProfile, fallback: ProfessionalProfileData): ProfessionalProfileData {
-  return {
-    name: profile.professional_name ?? profile.full_name ?? fallback.name,
-    register: profile.professional_registration ?? profile.crp ?? "",
-    email: profile.email ?? fallback.email,
-    phone: profile.phone ?? "",
-    specialty: profile.specialty ?? fallback.specialty,
-    bio: profile.professional_bio ?? profile.bio ?? fallback.bio,
-    photoUrl: profile.profile_photo_url ?? profile.avatar_url ?? ""
-  };
-}
-
-async function saveProfessionalProfileDirectly(supabase: ReturnType<typeof createBrowserSupabaseClient>, payload: ProfessionalProfilePayload) {
-  const legacyPayload = {
-    organization_id: payload.organization_id,
-    profile_id: payload.profile_id,
-    full_name: payload.full_name,
-    avatar_url: payload.avatar_url,
-    crp: payload.crp,
-    phone: payload.phone,
-    email: payload.email,
-    specialty: payload.specialty,
-    bio: payload.bio
-  };
-
-  const { error: profileError } = await supabase.from("profiles").upsert(
-    {
-      id: payload.profile_id,
-      full_name: payload.full_name,
-      avatar_url: payload.avatar_url,
-      crp: payload.crp,
-      phone: payload.phone,
-      email: payload.email,
-      specialty: payload.specialty,
-      bio: payload.bio
-    },
-    { onConflict: "id" }
-  );
-
-  if (profileError) return { ok: false, message: profileError.message, profile: null };
-
-  const modernFind = await supabase
-    .from("professional_profiles")
-    .select("id")
-    .eq("user_id", payload.profile_id)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const legacyFind = modernFind.error || !modernFind.data ? await supabase
-    .from("professional_profiles")
-    .select("id")
-    .eq("organization_id", payload.organization_id)
-    .eq("profile_id", payload.profile_id)
-    .maybeSingle() : { data: null, error: null };
-
-  if (modernFind.error && legacyFind.error) return { ok: false, message: legacyFind.error.message || modernFind.error.message, profile: null };
-  const existingProfile = modernFind.data ?? legacyFind.data;
-
-  const modernQuery = existingProfile?.id
-    ? supabase
-        .from("professional_profiles")
-        .update({ ...payload, updated_at: new Date().toISOString() })
-        .eq("id", existingProfile.id)
-        .select("full_name, avatar_url, crp, phone, email, specialty, bio, professional_name, professional_registration, professional_bio, profile_photo_url")
-        .single()
-    : supabase
-        .from("professional_profiles")
-        .insert(payload)
-        .select("full_name, avatar_url, crp, phone, email, specialty, bio, professional_name, professional_registration, professional_bio, profile_photo_url")
-        .single();
-
-  const { data, error } = await modernQuery;
-  if (error) {
-    const legacyQuery = existingProfile?.id
-      ? supabase
-          .from("professional_profiles")
-          .update({ ...legacyPayload, updated_at: new Date().toISOString() })
-          .eq("id", existingProfile.id)
-          .select("full_name, avatar_url, crp, phone, email, specialty, bio")
-          .single()
-      : supabase
-          .from("professional_profiles")
-          .insert(legacyPayload)
-          .select("full_name, avatar_url, crp, phone, email, specialty, bio")
-          .single();
-
-    const legacyResult = await legacyQuery;
-    if (legacyResult.error) return { ok: false, message: legacyResult.error.message, profile: null };
-    return { ok: true, message: "", profile: legacyResult.data as DatabaseProfessionalProfile };
-  }
-  return { ok: true, message: "", profile: data as DatabaseProfessionalProfile };
 }
 
 function calculateAge(birthDate?: string | null) {
