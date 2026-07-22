@@ -128,7 +128,7 @@ export function LoginPage() {
       const result = await signUpWithEmail(values.email, values.password, values.activationCode ?? "");
       if (!result.error) {
         if (result.data?.session) {
-          setSessionCookie(values.remember);
+          clearLegacySessionCookie();
           setAuthState("success");
           setTimeout(() => router.push(returnTo), 650);
           return;
@@ -154,7 +154,7 @@ export function LoginPage() {
 
     const result = await signInWithEmail(values.email, values.password);
     if (!result.error) {
-      setSessionCookie(values.remember);
+      clearLegacySessionCookie();
       setAuthState("success");
       setTimeout(() => router.push(returnTo), 650);
       return;
@@ -468,8 +468,8 @@ export function LoginPage() {
   );
 }
 
-function setSessionCookie(remember: boolean) {
-  document.cookie = `nexopsi_session=auth; path=/; max-age=${remember ? 60 * 60 * 24 * 30 : 60 * 60}; samesite=lax`;
+function clearLegacySessionCookie() {
+  document.cookie = "nexopsi_session=; path=/; max-age=0; samesite=lax";
 }
 
 function SalesPopup({ onClose }: { onClose: () => void }) {

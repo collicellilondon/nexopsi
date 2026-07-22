@@ -64,7 +64,14 @@ export function InteractiveHome() {
           return;
         }
 
-        const profileResult = await fetchProfessionalProfile(sessionData.session.access_token);
+        const accessToken = sessionData.session.access_token;
+        if (!accessToken) {
+          clearLocalSessionCookie();
+          redirectToLogin();
+          return;
+        }
+
+        const profileResult = await fetchProfessionalProfile(accessToken);
         if (!profileResult.ok) {
           notify(profileResult.message);
           return;
