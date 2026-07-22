@@ -81,7 +81,7 @@ export function ClinicalCalendar({ createdCount, workspaceId, patients = [], onN
         return;
       }
 
-      const nextItems = (data ?? []).map((row) => mapDatabaseAppointment(row as DatabaseAppointment, patientNames));
+      const nextItems = ((data ?? []) as DatabaseAppointment[]).map((row) => mapDatabaseAppointment(row, patientNames));
       setItems(nextItems);
       setSelectedId((current) => current ?? nextItems[0]?.id ?? null);
     }

@@ -30,6 +30,22 @@ export async function signUpWithEmail(email: string, password: string, activatio
       };
     }
 
+    const session = readSession(payload);
+    if (session?.access_token && session.refresh_token) {
+      const supabase = createBrowserSupabaseClient();
+      const { error } = await supabase.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token
+      });
+
+      if (error) {
+        return {
+          data: null,
+          error: { message: `Conta criada, mas nao foi possivel iniciar a sessao no navegador: ${error.message}` }
+        };
+      }
+    }
+
     return {
       data: payload.data ?? null,
       error: null
@@ -68,6 +84,15 @@ async function readJsonResponse(response: Response) {
   } catch {
     return { error: `Resposta inesperada do servidor (${response.status}).` };
   }
+}
+
+function readSession(payload: unknown) {
+  if (!payload || typeof payload !== "object") return null;
+  const data = (payload as { data?: unknown }).data;
+  if (!data || typeof data !== "object") return null;
+  const session = (data as { session?: unknown }).session;
+  if (!session || typeof session !== "object") return null;
+  return session as { access_token?: string; refresh_token?: string };
 }
 
 export async function sendPasswordRecovery(email: string) {

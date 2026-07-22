@@ -110,7 +110,7 @@ export function InteractiveHome() {
           return;
         }
 
-        const nextPatients = (savedPatients ?? []).map((patient) => mapDatabasePatient(patient, resolvedProfile.name));
+        const nextPatients = ((savedPatients ?? []) as DatabasePatient[]).map((patient) => mapDatabasePatient(patient, resolvedProfile.name));
         if (active) {
           setPatients(nextPatients);
           storePatientsLocally(nextPatients);
@@ -497,15 +497,26 @@ export function InteractiveHome() {
   async function uploadProfessionalPhoto(file: File) {
     try {
       const supabase = createBrowserSupabaseClient();
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      const userId = userData.user?.id;
-      if (userError || !userId) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user.id;
+
+      if (!userId) {
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError || !userData.user?.id) {
+          clearLocalSessionCookie();
+          notify("Sua sessao real do Supabase nao esta ativa no navegador. Entre novamente pela tela de login e salve a foto depois.");
+          return null;
+        }
+      }
+
+      const resolvedUserId = userId ?? (await supabase.auth.getUser()).data.user?.id;
+      if (!resolvedUserId) {
         notify("Entre novamente para enviar a foto profissional ao Supabase.");
         return null;
       }
 
       const extension = file.name.split(".").pop()?.toLowerCase() || file.type.split("/").pop() || "jpg";
-      const path = `${userId}/avatar-${Date.now()}.${extension}`;
+      const path = `${resolvedUserId}/avatar-${Date.now()}.${extension}`;
       const { error } = await supabase.storage.from("professional-avatars").upload(path, file, {
         cacheControl: "3600",
         contentType: file.type,
@@ -529,6 +540,11 @@ export function InteractiveHome() {
       return null;
     }
   }
+}
+
+function clearLocalSessionCookie() {
+  if (typeof document === "undefined") return;
+  document.cookie = "nexopsi_session=; path=/; max-age=0; samesite=lax";
 }
 
 function includesAny(value: string, terms: string[]) {

@@ -88,11 +88,11 @@ export function LoginPage() {
 
     try {
       const supabase = createBrowserSupabaseClient();
-      supabase.auth.getSession().then(({ data }) => {
+      supabase.auth.getSession().then(({ data }: { data: { session: unknown } }) => {
         if (data.session) setResetReady(true);
       });
 
-      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      const { data } = supabase.auth.onAuthStateChange((event: string, session: unknown) => {
         if (event === "PASSWORD_RECOVERY" || session) {
           setResetReady(true);
           setAuthMode("reset");
