@@ -229,9 +229,10 @@ export function FinancePanel({ userId, patients = [], searchQuery = "", onNotify
     }
 
     const supabase = createBrowserSupabaseClient();
+    await supabase.from("service_prices").delete().eq("user_id", userId).eq("name", nextPrice.name);
     const { data, error } = await supabase
       .from("service_prices")
-      .upsert(mapPriceToDatabase(nextPrice, userId), { onConflict: "user_id,name" })
+      .insert(mapPriceToDatabase(nextPrice, userId))
       .select("id, name, duration, value, recurrence, active");
     if (error) {
       onNotify(`Nao foi possivel salvar o valor no Supabase: ${error.message}`);
@@ -250,11 +251,13 @@ export function FinancePanel({ userId, patients = [], searchQuery = "", onNotify
 
     const supabase = createBrowserSupabaseClient();
     const payload = prices.map((price) => mapPriceToDatabase(price, userId));
-    const { data, error } = await supabase
-      .from("service_prices")
-      .upsert(payload, { onConflict: "user_id,name" })
-      .select("id, name, duration, value, recurrence, active")
-      .order("created_at", { ascending: true });
+    const deleteResult = await supabase.from("service_prices").delete().eq("user_id", userId);
+    if (deleteResult.error) {
+      onNotify(`Nao foi possivel atualizar os valores: ${deleteResult.error.message}`);
+      return;
+    }
+
+    const { data, error } = await supabase.from("service_prices").insert(payload).select("id, name, duration, value, recurrence, active").order("created_at", { ascending: true });
     if (error) {
       onNotify(`Nao foi possivel atualizar os valores: ${error.message}`);
       return;

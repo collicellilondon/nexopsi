@@ -543,15 +543,22 @@ async function saveProfessionalProfileDirectly(
     updated_at: new Date().toISOString()
   };
 
-  const { data, error } = await supabase
-    .from("professional_profiles")
-    .upsert(savedProfile, { onConflict: "user_id" })
-    .select("full_name, crp, email, phone, specialty, bio, avatar_url")
-    .single();
+  const { data: existingProfile } = await supabase.from("professional_profiles").select("id").eq("user_id", userId).maybeSingle();
+  const profileQuery = existingProfile?.id
+    ? supabase.from("professional_profiles").update(savedProfile).eq("id", existingProfile.id)
+    : supabase.from("professional_profiles").insert(savedProfile);
+
+  const { data, error } = await profileQuery.select("full_name, crp, email, phone, specialty, bio, avatar_url").single();
 
   if (error) return { ok: false as const, message: `Nao foi possivel salvar o cadastro profissional: ${error.message}`, profile };
 
-  await supabase.from("profiles").upsert(savedProfile, { onConflict: "user_id" });
+  const { data: existingBaseProfile } = await supabase.from("profiles").select("id").eq("user_id", userId).maybeSingle();
+  if (existingBaseProfile?.id) {
+    await supabase.from("profiles").update(savedProfile).eq("id", existingBaseProfile.id);
+  } else {
+    await supabase.from("profiles").insert(savedProfile);
+  }
+
   return { ok: true as const, message: "", profile: normalizeApiProfile(data) };
 }
 

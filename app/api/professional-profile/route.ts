@@ -55,15 +55,21 @@ export async function POST(request: Request) {
     updated_at: new Date().toISOString()
   };
 
-  const { data, error } = await context.supabase
-    .from("professional_profiles")
-    .upsert(profileRow, { onConflict: "user_id" })
-    .select("full_name, crp, email, phone, specialty, bio, avatar_url")
-    .single();
+  const { data: existingProfile } = await context.supabase.from("professional_profiles").select("id").eq("user_id", context.user.id).maybeSingle();
+  const profileQuery = existingProfile?.id
+    ? context.supabase.from("professional_profiles").update(profileRow).eq("id", existingProfile.id)
+    : context.supabase.from("professional_profiles").insert(profileRow);
+
+  const { data, error } = await profileQuery.select("full_name, crp, email, phone, specialty, bio, avatar_url").single();
 
   if (error) return errorResponse(`Nao foi possivel salvar o cadastro profissional: ${error.message}`, 500);
 
-  await context.supabase.from("profiles").upsert(profileRow, { onConflict: "user_id" });
+  const { data: existingBaseProfile } = await context.supabase.from("profiles").select("id").eq("user_id", context.user.id).maybeSingle();
+  if (existingBaseProfile?.id) {
+    await context.supabase.from("profiles").update(profileRow).eq("id", existingBaseProfile.id);
+  } else {
+    await context.supabase.from("profiles").insert(profileRow);
+  }
 
   return NextResponse.json({
     userId: context.user.id,
